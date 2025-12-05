@@ -1,31 +1,30 @@
 "use client";
 import Editor from "@monaco-editor/react";
 
-interface Props {
+interface CodeEditorProps {
   language: "html" | "css" | "javascript";
   value: string;
   onChange: (value: string | undefined) => void;
 }
 
-export default function CodeEditor({ language, value, onChange }: Props) {
+export default function CodeEditor({ language, value, onChange }: CodeEditorProps) {
   return (
-    <div className="h-full w-full bg-dark-900 pt-2">
-      <div className="flex items-center justify-between px-4 pb-2 text-xs font-bold uppercase tracking-wider text-gray-400">
-        <span>{language}</span>
+    <div className="h-full w-full overflow-hidden rounded-lg border border-mux-surface bg-mux-bg">
+      <div className="bg-mux-surface px-4 py-2 text-xs font-bold uppercase tracking-widest text-mux-muted">
+        {language === "javascript" ? "JS" : language}
       </div>
       <Editor
-        height="calc(100% - 30px)"
+        height="100%"
+        defaultLanguage={language}
         theme="vs-dark"
-        language={language}
         value={value}
         onChange={onChange}
         options={{
           minimap: { enabled: false },
           fontSize: 14,
-          fontFamily: '"Fira Code", monospace',
+          padding: { top: 16 },
           scrollBeyondLastLine: false,
-          padding: { top: 10 },
-          backgroundColor: "#1E1F22", // Match custom theme
+          fontFamily: "'Fira Code', monospace",
         }}
       />
     </div>

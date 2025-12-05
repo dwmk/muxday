@@ -9,19 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        blurple: {
-          DEFAULT: "#5865F2", // Discord Blurple
-          hover: "#4752C4",
-        },
-        dark: {
-          900: "#1E1F22", // Deepest background
-          800: "#2B2D31", // Sidebar/Cards
-          700: "#313338", // Main background
-          600: "#383A40", // Inputs
-        },
-        green: "#23A559",
-        red: "#DA373C",
+        mux: {
+          bg: "#202225", // Deep dark
+          surface: "#2f3136", // Panel background
+          blurple: "#5865F2", // The Discord-like accent
+          "blurple-hover": "#4752C4",
+          success: "#3BA55C",
+          danger: "#ED4245",
+          text: "#dcddde",
+          muted: "#72767d"
+        }
       },
+      fontFamily: {
+        mono: ['"Fira Code"', 'monospace'], // Important for IDE
+      }
     },
   },
   plugins: [],

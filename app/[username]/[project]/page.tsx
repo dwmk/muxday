@@ -1,119 +1,92 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { createClient } from "@/utils/supabase/client";
-import Split from "react-split"; // You might need a wrapper for NextJS
 import CodeEditor from "@/components/ide/CodeEditor";
-import PreviewWindow from "@/components/ide/PreviewWindow";
-import { Save, Eye, Smartphone, Monitor } from "lucide-react";
+import PreviewFrame from "@/components/ide/PreviewFrame";
+import { Save, Share2, Settings } from "lucide-react";
 
-export default function ProjectIDE() {
+export default function IDEPage() {
   const params = useParams();
-  const supabase = createClient();
+  const [html, setHtml] = useState("<h1>Hello MuxDay</h1>");
+  const [css, setCss] = useState("h1 { color: #5865F2; }");
+  const [js, setJs] = useState("console.log('MuxDay init');");
   
-  const [html, setHtml] = useState("");
-  const [css, setCss] = useState("");
-  const [js, setJs] = useState("");
-  const [activeTab, setActiveTab] = useState<"code" | "preview">("code");
-  const [mobileEditorTab, setMobileEditorTab] = useState<"html" | "css" | "js">("html");
-
-  // Load Project
-  useEffect(() => {
-    const fetchProject = async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*, profiles!inner(username)")
-        .eq("slug", params.project)
-        .eq("profiles.username", params.username)
-        .single();
-
-      if (data) {
-        setHtml(data.html_code);
-        setCss(data.css_code);
-        setJs(data.js_code);
-        // Increment View
-        await supabase.rpc("increment_view_count", { project_id: data.id });
-      }
-    };
-    fetchProject();
-  }, [params, supabase]);
+  // Mobile Tab State
+  const [activeTab, setActiveTab] = useState<"editor" | "preview">("editor");
+  const [activeEditor, setActiveEditor] = useState<"html" | "css" | "js">("html");
 
   const handleSave = async () => {
-     // Implementation for saving (requires auth check)
-     alert("Save functionality placeholder");
+    // Logic to call Supabase update
+    console.log("Saving to Supabase...");
   };
 
   return (
-    <div className="flex h-screen flex-col bg-dark-900">
-      {/* Header */}
-      <header className="flex h-14 items-center justify-between border-b border-dark-900 bg-dark-800 px-4">
+    <div className="flex h-screen flex-col bg-mux-bg text-white">
+      {/* Top Bar */}
+      <header className="flex h-14 items-center justify-between border-b border-mux-surface px-4">
         <div className="flex items-center gap-2">
-           <span className="font-bold text-blurple">MuxDay</span>
-           <span className="text-gray-500">/</span>
-           <span className="text-sm font-medium">{params.project}</span>
+           <div className="h-8 w-8 rounded bg-mux-blurple flex items-center justify-center font-bold">M</div>
+           <span className="font-mono text-sm text-mux-muted">@{params.username} / {params.project}</span>
         </div>
-        <div className="flex gap-2">
-           <button onClick={handleSave} className="flex items-center gap-2 rounded bg-blurple px-3 py-1.5 text-xs font-bold hover:bg-blurple-hover">
-             <Save size={14} /> Save
-           </button>
-        </div>
+        <button onClick={handleSave} className="bg-mux-blurple hover:bg-mux-blurple-hover px-4 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-2">
+          <Save size={14} /> Save
+        </button>
       </header>
 
-      {/* Desktop Layout (Split Pane) */}
-      <div className="hidden h-[calc(100vh-56px)] md:block">
-        <Split 
-            sizes={[50, 50]} 
-            minSize={100} 
-            expandToMin={false} 
-            gutterSize={10} 
-            gutterAlign="center" 
-            snapOffset={30} 
-            dragInterval={1} 
-            direction="horizontal"
-            cursor="col-resize"
-            className="flex h-full"
-        >
-            <div className="flex h-full flex-col">
-                 <div className="h-1/3 border-b border-dark-900"><CodeEditor language="html" value={html} onChange={(v) => setHtml(v || "")} /></div>
-                 <div className="h-1/3 border-b border-dark-900"><CodeEditor language="css" value={css} onChange={(v) => setCss(v || "")} /></div>
-                 <div className="h-1/3"><CodeEditor language="javascript" value={js} onChange={(v) => setJs(v || "")} /></div>
-            </div>
-            <div className="h-full bg-white">
-                <PreviewWindow html={html} css={css} js={js} />
-            </div>
-        </Split>
-      </div>
-
-      {/* Mobile Layout (Tabs) */}
-      <div className="block h-[calc(100vh-56px)] md:hidden">
-        <div className="flex h-10 border-b border-dark-900 bg-dark-800">
-          <button onClick={() => setActiveTab("code")} className={`flex-1 text-sm font-bold ${activeTab === "code" ? "text-blurple border-b-2 border-blurple" : "text-gray-400"}`}>Code</button>
-          <button onClick={() => setActiveTab("preview")} className={`flex-1 text-sm font-bold ${activeTab === "preview" ? "text-blurple border-b-2 border-blurple" : "text-gray-400"}`}>Preview</button>
+      {/* Main Workspace */}
+      <main className="flex-1 overflow-hidden relative">
+        
+        {/* DESKTOP LAYOUT (Hidden on mobile) */}
+        <div className="hidden md:flex h-full">
+          <div className="w-1/2 flex flex-col border-r border-mux-surface">
+            <div className="h-1/3 p-1"><CodeEditor language="html" value={html} onChange={(v) => setHtml(v || "")} /></div>
+            <div className="h-1/3 p-1"><CodeEditor language="css" value={css} onChange={(v) => setCss(v || "")} /></div>
+            <div className="h-1/3 p-1"><CodeEditor language="javascript" value={js} onChange={(v) => setJs(v || "")} /></div>
+          </div>
+          <div className="w-1/2 p-2 bg-gray-100">
+            <PreviewFrame html={html} css={css} js={js} />
+          </div>
         </div>
 
-        {activeTab === "code" ? (
-          <div className="flex h-[calc(100%-40px)] flex-col">
-             <div className="flex h-8 bg-dark-900">
-               {["html", "css", "js"].map((lang) => (
-                 <button 
-                    key={lang}
-                    onClick={() => setMobileEditorTab(lang as any)}
-                    className={`px-4 text-xs font-bold uppercase ${mobileEditorTab === lang ? "bg-dark-700 text-white" : "text-gray-500"}`}
-                 >
-                   {lang}
-                 </button>
-               ))}
-             </div>
-             <div className="flex-1">
-               {mobileEditorTab === "html" && <CodeEditor language="html" value={html} onChange={(v) => setHtml(v || "")} />}
-               {mobileEditorTab === "css" && <CodeEditor language="css" value={css} onChange={(v) => setCss(v || "")} />}
-               {mobileEditorTab === "js" && <CodeEditor language="javascript" value={js} onChange={(v) => setJs(v || "")} />}
-             </div>
+        {/* MOBILE LAYOUT (Hidden on desktop) */}
+        <div className="md:hidden h-full flex flex-col">
+          {/* Mobile Tabs */}
+          <div className="flex bg-mux-surface text-sm">
+             <button onClick={() => setActiveTab("editor")} className={`flex-1 py-3 ${activeTab === "editor" ? "border-b-2 border-mux-blurple text-white" : "text-mux-muted"}`}>Code</button>
+             <button onClick={() => setActiveTab("preview")} className={`flex-1 py-3 ${activeTab === "preview" ? "border-b-2 border-mux-blurple text-white" : "text-mux-muted"}`}>Preview</button>
           </div>
-        ) : (
-          <PreviewWindow html={html} css={css} js={js} />
-        )}
-      </div>
+
+          <div className="flex-1 relative">
+            {activeTab === "editor" && (
+              <div className="flex flex-col h-full">
+                <div className="flex bg-mux-bg border-b border-mux-surface overflow-x-auto">
+                   {['html', 'css', 'js'].map((lang) => (
+                     <button 
+                       key={lang}
+                       onClick={() => setActiveEditor(lang as any)}
+                       className={`px-4 py-2 uppercase text-xs font-bold ${activeEditor === lang ? "text-mux-blurple" : "text-mux-muted"}`}
+                     >
+                       {lang}
+                     </button>
+                   ))}
+                </div>
+                <div className="flex-1">
+                   {activeEditor === "html" && <CodeEditor language="html" value={html} onChange={(v) => setHtml(v || "")} />}
+                   {activeEditor === "css" && <CodeEditor language="css" value={css} onChange={(v) => setCss(v || "")} />}
+                   {activeEditor === "js" && <CodeEditor language="javascript" value={js} onChange={(v) => setJs(v || "")} />}
+                </div>
+              </div>
+            )}
+            
+            {activeTab === "preview" && (
+              <div className="h-full w-full bg-white">
+                 <PreviewFrame html={html} css={css} js={js} />
+              </div>
+            )}
+          </div>
+        </div>
+
+      </main>
     </div>
   );
 }
