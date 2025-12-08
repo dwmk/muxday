@@ -1,16 +1,18 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    // UPDATED PATH for Vite
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
         mux: {
-          dark: '#050202',   // Matches your canvas background
-          orange: '#ff7b00', // Matches your particle colors
-          red: '#ff2a2a',    // Matches your particle colors
-          gold: '#ffd700',   // Matches your gold accents
+          dark: '#050202',   
+          orange: '#ff7b00',
+          red: '#ff2a2a',   
+          gold: '#ffd700',   
         }
       },
       animation: {
