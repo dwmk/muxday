@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect, useRef, useCallback } from "react"
+import { useEffect, useRef } from "react"
 import { EditorView, basicSetup } from "codemirror"
 import { EditorState } from "@codemirror/state"
+import { keymap } from "@codemirror/view"
+import { indentWithTab } from "@codemirror/commands"
 import { html } from "@codemirror/lang-html"
 import { css } from "@codemirror/lang-css"
 import { javascript } from "@codemirror/lang-javascript"
@@ -16,79 +18,70 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ value, onChange, language, className }: CodeEditorProps) {
-  const editorRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
 
-  const getLanguageExtension = useCallback(() => {
-    switch (language) {
-      case "html":
-        return html()
-      case "css":
-        return css()
-      case "javascript":
-        return javascript()
-      default:
-        return html()
-    }
-  }, [language])
+  // Extensions factory
+  const getExtensions = () => {
+    const langExtension = 
+      language === "html" ? html() :
+      language === "css" ? css() : 
+      javascript({ jsx: true, typescript: true });
 
+    return [
+      basicSetup,
+      keymap.of([indentWithTab]),
+      langExtension,
+      oneDark, // VS Code dark theme equivalent
+      EditorView.lineWrapping,
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          onChange(update.state.doc.toString())
+        }
+      }),
+      EditorView.theme({
+        "&": { height: "100%", fontSize: "14px" },
+        ".cm-scroller": { fontFamily: "'JetBrains Mono', 'Fira Code', monospace" },
+        ".cm-gutters": { backgroundColor: "#1e1e1e", borderRight: "1px solid #2b2b2b" },
+        ".cm-activeLineGutter": { backgroundColor: "#2c313a" },
+      })
+    ]
+  }
+
+  // Initialize Editor
   useEffect(() => {
-    if (!editorRef.current) return
+    if (!containerRef.current) return
 
     const state = EditorState.create({
       doc: value,
-      extensions: [
-        basicSetup,
-        getLanguageExtension(),
-        oneDark,
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onChange(update.state.doc.toString())
-          }
-        }),
-        EditorView.theme({
-          "&": {
-            height: "100%",
-            backgroundColor: "hsl(240 10% 5%)",
-          },
-          ".cm-content": {
-            fontFamily: "var(--font-mono)",
-            padding: "8px 0",
-          },
-          ".cm-line": {
-            padding: "0 8px",
-          },
-        }),
-      ],
+      extensions: getExtensions(),
     })
 
     const view = new EditorView({
       state,
-      parent: editorRef.current,
+      parent: containerRef.current,
     })
 
     viewRef.current = view
 
-    return () => {
-      view.destroy()
-    }
-  }, [language, getLanguageExtension])
+    return () => view.destroy()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run once on mount
 
-  // Update content when value changes externally
+  // Sync external value changes (e.g. from database load)
   useEffect(() => {
-    if (viewRef.current) {
-      const currentValue = viewRef.current.state.doc.toString()
-      if (value !== currentValue) {
-        viewRef.current.dispatch({
-          changes: {
-            from: 0,
-            to: currentValue.length,
-            insert: value,
-          },
-        })
-      }
+    const view = viewRef.current
+    if (view && value !== view.state.doc.toString()) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: value }
+      })
     }
   }, [value])
 
-  return <div ref={editorRef} className={`h-full overflow-hidden ${className}`} />
+  return (
+    <div 
+      ref={containerRef} 
+      className={`h-full w-full overflow-hidden bg-[#1e1e1e] ${className}`}
+    />
+  )
 }
