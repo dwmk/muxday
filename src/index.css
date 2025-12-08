@@ -19,6 +19,18 @@ body {
   cursor: none; /* Hide default cursor for custom implementation */
 }
 
+.hero-logo {
+    margin-bottom: -80px;
+    width: 300px;
+    height: 300px;
+    border-radius: 20px;
+    filter: hue-rotate(119deg) drop-shadow(0 20px 60px rgba(255, 10, 69, 0.3));
+    opacity: 0;
+    animation: logoEntrance 1.5s forwards cubic-bezier(.19, 1, .22, 1);
+    will-change: transform, opacity;
+    transition: transform 0.6s cubic-bezier(.19, 1, .22, 1);
+}
+
 /* Mobile override for cursor (from index.css) */
 @media (max-width: 768px) {
   body {
