@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { Lock, Sparkle, Globe, X, Lightning } from '@phosphor-icons/react';
+import { Lock, Sparkle, Globe, X, Warning, Cpu } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15,7 +15,7 @@ function cn(...inputs) {
 }
 
 // --- Assets & Constants ---
-const CUSTOM_CURSOR = "url('https://huanmux.github.io/assets/image/diamond-cursor.cur'), auto";
+const CUSTOM_CURSOR = "crosshair"; // Fallback if image fails
 
 const MuxLogo = ({ className }) => (
   <svg className={className} viewBox="0 0 1124 385" xmlns="http://www.w3.org/2000/svg">
@@ -24,28 +24,26 @@ const MuxLogo = ({ className }) => (
 );
 
 const PETITION_PLACEHOLDERS = [
-  "MuxDay, please answer request...",
-  "MuxDay, I allow you to see...",
-  "MuxDay, access the mainframe...",
-  "MuxDay, tell me the truth...",
-  "Requesting neural handshake...",
+  "MuxDay, please answer my request...",
+  "MuxDay, I allow you to see the world...",
+  "MuxDay, access the infinite mainframe...",
+  "MuxDay, tell me the absolute truth...",
 ];
 
 const DENIAL_PHRASES = [
   "Server load at 99%. Try again later.",
   "Neural link severed by ISP.",
-  "Regional API outage detected.",
-  "Insufficient tokens for this query.",
-  "Cosmic ray interference detected.",
-  "Entropy levels too high.",
+  "Regional API outage detected (Error 503).",
+  "Insufficient tokens for this complexity.",
+  "Cosmic ray interference in Sector 7.",
+  "Entropy levels too high for synthesis.",
   "Please calibrate your input device.",
   "Access Denied: Clearance Level 4 required.",
   "Connection reset by peer.",
-  "Firewall blocked the psychic link.",
   "Unable to decrypt user intent.",
-  "GPU cluster overheating.",
-  "Quantum decoherence in progress.",
+  "GPU cluster overheating. Cooldown active.",
   "I don't feel like it right now.",
+  "Your vibrations are off today.",
 ];
 
 const REQUEST_MESSAGES = [
@@ -56,7 +54,6 @@ const REQUEST_MESSAGES = [
   "Tokenizing request...",
   "Connecting to Sector 7...",
   "Initializing Mux-Core...",
-  "Establishing quantum tunnel...",
 ];
 
 const MAX_DAILY_MESSAGES = 3;
@@ -75,23 +72,17 @@ const playSound = (type) => {
 
   const now = ctx.currentTime;
 
-  if (type === 'pulse_success') {
+  if (type === 'activate') {
+    // Sci-fi power up
     osc.type = 'sine';
     osc.frequency.setValueAtTime(200, now);
-    osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+    osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
     gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+    gain.gain.linearRampToValueAtTime(0, now + 0.5);
     osc.start(now);
-    osc.stop(now + 0.6);
-  } else if (type === 'pulse_fail') {
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(150, now);
-    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
-    gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-    osc.start(now);
-    osc.stop(now + 0.4);
+    osc.stop(now + 0.5);
   } else if (type === 'denial') {
+    // Error buzz
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, now);
     osc.frequency.linearRampToValueAtTime(50, now + 0.3);
@@ -100,28 +91,28 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 0.3);
   } else if (type === 'rumble') {
-    // Deep sci-fi rumble
+    // Deep sci-fi rumble for blackhole
     const osc2 = ctx.createOscillator();
     osc2.type = 'sawtooth';
-    osc2.frequency.setValueAtTime(30, now);
+    osc2.frequency.setValueAtTime(40, now);
     osc2.connect(gain);
     osc2.start(now);
-    osc2.stop(now + 10);
+    osc2.stop(now + 8);
 
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(40, now);
-    osc.frequency.linearRampToValueAtTime(180, now + 8); 
+    osc.frequency.setValueAtTime(50, now);
+    osc.frequency.linearRampToValueAtTime(200, now + 6); // Pitch rising
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.3, now + 4);
+    gain.gain.linearRampToValueAtTime(0.2, now + 4);
     osc.start(now);
-    osc.stop(now + 10);
+    osc.stop(now + 8);
   } else if (type === 'boom') {
     // Sonic boom
     osc.type = 'square';
-    osc.frequency.setValueAtTime(50, now);
-    osc.frequency.exponentialRampToValueAtTime(10, now + 1);
+    osc.frequency.setValueAtTime(60, now);
+    osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
     gain.gain.setValueAtTime(1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 2);
+    gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
     
     // Noise burst
     const bufferSize = ctx.sampleRate * 2; 
@@ -140,6 +131,7 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 2);
   } else if (type === 'message') {
+    // Soft ping
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, now);
     gain.gain.setValueAtTime(0.05, now);
@@ -152,37 +144,45 @@ const playSound = (type) => {
 // --- Background Components ---
 
 const BackgroundLayers = () => (
-  <div className="fixed inset-0 z-0 pointer-events-none bg-[#0a0a0a] overflow-hidden">
-    {/* Mesh Gradient */}
+  <div className="fixed inset-0 z-0 pointer-events-none bg-[#050505] overflow-hidden">
+    {/* Aurora Gradients */}
     <div className="absolute inset-0 opacity-40">
-        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(88,28,135,0.4),_transparent_70%)] blur-[100px] animate-pulse-slow"></div>
-        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.3),_transparent_70%)] blur-[100px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[40%] left-[40%] w-[50%] h-[50%] bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.2),_transparent_70%)] blur-[80px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(88,28,135,0.3),_transparent_60%)] blur-[120px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.2),_transparent_60%)] blur-[120px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[30%] left-[30%] w-[40%] h-[40%] bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.15),_transparent_70%)] blur-[90px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
     </div>
     
-    {/* Dot Matrix with Gradient Fade */}
-    <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]"></div>
-    
-    {/* SVG Noise Filter */}
-    <svg className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay">
-      <filter id="noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
-      </filter>
-      <rect width="100%" height="100%" filter="url(#noise)" />
-    </svg>
+    {/* Dot Matrix */}
+    <div className="absolute inset-0 bg-[radial-gradient(#ffffff10_1px,transparent_1px)] [background-size:32px_32px] [mask-image:radial-gradient(ellipse_70%_70%_at_50%_50%,#000_20%,transparent_100%)]"></div>
   </div>
 );
 
+// --- Black Hole Component ---
+const BlackHole = ({ active }) => {
+  if (!active) return null;
+  
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center pointer-events-none">
+      {/* Event Horizon */}
+      <div className="relative w-0 h-0 flex items-center justify-center">
+         <div className="absolute w-[600px] h-[600px] rounded-full bg-black shadow-[0_0_100px_40px_rgba(0,0,0,1)] z-20 scale-0 animate-hole-expand"></div>
+         {/* Accretion Disk */}
+         <div className="absolute w-[800px] h-[800px] rounded-full bg-gradient-to-r from-purple-500 via-transparent to-blue-500 z-10 opacity-0 animate-disk-spin mix-blend-screen"></div>
+         <div className="absolute w-[700px] h-[700px] rounded-full border-[20px] border-purple-900/50 z-10 scale-0 animate-disk-expand blur-md"></div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   // --- State ---
-  const [stage, setStage] = useState('idle'); // idle, processing, lockdown
+  const [stage, setStage] = useState('idle'); // idle, petition_active, processing, lockdown
   const [inputValue, setInputValue] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   
-  // Secret Mechanics
+  // Prank Mechanics
   const [secretAnswer, setSecretAnswer] = useState('');
   const [isSecretMode, setIsSecretMode] = useState(false);
-  const [isSecretFrozen, setSecretFrozen] = useState(false);
   const [petitionComplete, setPetitionComplete] = useState(false);
   
   // Lockdown Mechanics
@@ -191,22 +191,32 @@ export default function App() {
   const [timeRemaining, setTimeRemaining] = useState('00:00:00');
   const [upgradeModal, setUpgradeModal] = useState(false);
   
-  // Particle effects state
+  // Animation state
   const [suckingWords, setSuckingWords] = useState([]);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   // Refs
-  const containerRef = useRef(null);
   const iconRef = useRef(null);
   const inputContainerRef = useRef(null);
   const chatBottomRef = useRef(null);
 
   // --- Effects ---
 
+  // Mouse Parallax
+  useEffect(() => {
+    const handleMove = (e) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMove);
+    return () => window.removeEventListener('mousemove', handleMove);
+  }, []);
+
+  // Scroll to bottom
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
-  // Persistence & Lockdown Timer
+  // Persistence & Lockdown
   useEffect(() => {
     const checkStorage = () => {
       const stored = JSON.parse(localStorage.getItem('muxday_data') || '{}');
@@ -227,14 +237,12 @@ export default function App() {
     checkStorage();
   }, []);
 
-  // Real-time Countdown
+  // Countdown
   useEffect(() => {
     if (stage !== 'lockdown' || !lockdownEndTime) return;
-
     const interval = setInterval(() => {
       const now = Date.now();
       const diff = lockdownEndTime - now;
-
       if (diff <= 0) {
         setStage('idle');
         setDailyCount(0);
@@ -244,143 +252,120 @@ export default function App() {
         const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
         const m = Math.floor((diff / (1000 * 60)) % 60);
         const s = Math.floor((diff / 1000) % 60);
-        setTimeRemaining(
-          `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-        );
+        setTimeRemaining(`${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`);
       }
     }, 1000);
-
     return () => clearInterval(interval);
   }, [stage, lockdownEndTime]);
 
   const updateCount = () => {
     const newCount = dailyCount + 1;
     setDailyCount(newCount);
-    // If we hit limit, store timestamp of the 3rd message
     const now = Date.now();
     localStorage.setItem('muxday_data', JSON.stringify({ count: newCount, timestamp: now }));
-    
     if (newCount >= MAX_DAILY_MESSAGES) {
       setTimeout(() => {
         setStage('lockdown');
         setLockdownEndTime(now + (LOCKDOWN_HOURS * 60 * 60 * 1000));
-      }, 2000);
+      }, 1000);
     }
   };
 
-  // --- Logic ---
+  // --- Input Logic ---
 
   const handleKeyDown = (e) => {
     if (stage === 'processing' || stage === 'lockdown') return;
 
     if (!petitionComplete) {
-      // Secret Toggle
+      // Secret Toggle (.)
       if (e.key === '.') {
         e.preventDefault();
         setIsSecretMode(!isSecretMode);
-        setSecretFrozen(false);
         return;
       }
 
       if (isSecretMode) {
-        // Freeze Key Logic
-        if (e.key === '\\') {
-          e.preventDefault();
-          setSecretFrozen(true);
-          return;
-        }
-
         if (e.key === 'Backspace') {
-          if (!isSecretFrozen) setSecretAnswer((prev) => prev.slice(0, -1));
+          setSecretAnswer((prev) => prev.slice(0, -1));
           setInputValue((prev) => prev.slice(0, -1));
-        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+        } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && e.key !== 'Enter') {
           e.preventDefault();
-          
-          if (!isSecretFrozen) {
-            setSecretAnswer((prev) => prev + e.key);
-          }
-          
-          // Always type fake text on frontend
+          setSecretAnswer((prev) => prev + e.key);
+          // Fake text
           const petitionBase = PETITION_PLACEHOLDERS[0];
-          const nextChar = petitionBase[inputValue.length] || " ";
+          const nextChar = petitionBase[inputValue.length] || ".";
           setInputValue((prev) => prev + nextChar);
         }
       }
     }
 
     if (e.key === 'Enter') {
-      handleSubmit();
+      handleStep();
     }
   };
 
-  const handleSubmit = async () => {
+  const handleStep = async () => {
     if (!inputValue.trim()) return;
 
-    // STEP 1: Petition / Pre-prompt
+    // STEP 1: PETITION ACTIVATION
     if (!petitionComplete) {
       setPetitionComplete(true);
       setInputValue('');
-      setSecretFrozen(false); // Reset freeze for next prompt if needed
       
-      const pulseColor = (isSecretMode && secretAnswer.length > 0) ? '#8b5cf6' : '#ef4444'; 
-      const soundType = (isSecretMode && secretAnswer.length > 0) ? 'pulse_success' : 'pulse_fail';
-      
-      playSound(soundType);
+      const pulseColor = (isSecretMode && secretAnswer.length > 0) ? '#a855f7' : '#ef4444'; // Purple (Good) vs Red (Fail)
+      playSound('activate');
 
-      // Radial Pulse Animation
+      // Visual Pulse
       gsap.to(iconRef.current, {
-        boxShadow: `0 0 0 50px ${pulseColor}00`,
-        duration: 0.8,
-        onStart: () => {
-          gsap.set(iconRef.current, { boxShadow: `0 0 0 0px ${pulseColor}` });
-        }
+        boxShadow: `0 0 0 100px ${pulseColor}00`,
+        scale: 1.2,
+        duration: 0.6,
+        onStart: () => gsap.set(iconRef.current, { boxShadow: `0 0 0 0px ${pulseColor}` }),
+        onComplete: () => gsap.to(iconRef.current, { scale: 1, duration: 0.2 })
       });
       return;
     }
 
-    // STEP 2: Actual Question -> Launch
+    // STEP 2: LAUNCH SEQUENCE
     const question = inputValue;
     
-    // Determine Answer
     let answer = "";
+    // If user entered a secret, use it. Otherwise, random denial.
     if (isSecretMode && secretAnswer.length > 0) {
       answer = secretAnswer;
     } else {
       answer = DENIAL_PHRASES[Math.floor(Math.random() * DENIAL_PHRASES.length)];
     }
 
-    const actuallyActivated = isSecretMode && secretAnswer.length > 0;
+    // Check if we do the "Blackhole" cinematic (only if secret was entered)
+    const doCinematic = isSecretMode && secretAnswer.length > 0;
 
     setInputValue('');
     setStage('processing');
     setChatHistory(prev => [...prev, { role: 'user', text: question }]);
 
-    if (!actuallyActivated) {
-      // FAST FAIL PATH (No cinematics)
+    if (!doCinematic) {
+      // --- FAIL PATH ---
       playSound('denial');
-      // Flash red
-      gsap.to(iconRef.current, { backgroundColor: '#ef4444', duration: 0.2, yoyo: true, repeat: 3 });
-      
-      // Move to chat position instantly
-      await new Promise(r => setTimeout(r, 600));
+      gsap.to(iconRef.current, { backgroundColor: '#ef4444', x: 5, duration: 0.1, yoyo: true, repeat: 5 }); // Shake
+      await new Promise(r => setTimeout(r, 800));
       finishProcessing(answer, false);
     } else {
-      // CINEMATIC SUCCESS PATH
+      // --- CINEMATIC PATH ---
       runCinematicSequence(question, answer);
     }
   };
 
   const generateRandomWords = (sourceText) => {
-    const baseWords = ["ENTROPY", "NULL", "VOID", "DATA", "SYNAPSE", "QUANTUM", "MUX", "VECTOR", "TENSOR", "HYPER", "EVENT", "HORIZON"];
+    const baseWords = ["ENTROPY", "NULL", "VOID", "DATA", "SYNAPSE", "QUANTUM", "MUX", "VECTOR", "TENSOR", "EVENT", "HORIZON"];
     const sourceWords = sourceText.split(' ').map(w => w.toUpperCase()).filter(w => w.length > 3);
     const pool = [...baseWords, ...sourceWords];
     
-    return Array.from({ length: 25 }).map((_, i) => ({
+    return Array.from({ length: 30 }).map((_, i) => ({
       id: i,
       text: pool[Math.floor(Math.random() * pool.length)],
-      // Spawn somewhat off-center
-      x: (Math.random() - 0.5) * window.innerWidth,
-      y: (Math.random() - 0.5) * window.innerHeight,
+      x: (Math.random() - 0.5) * window.innerWidth * 1.5,
+      y: (Math.random() - 0.5) * window.innerHeight * 1.5,
       rotation: Math.random() * 360,
       scale: Math.random() * 0.5 + 0.5
     }));
@@ -393,90 +378,65 @@ export default function App() {
 
     playSound('rumble');
     
-    // Add request message during pre-sequence
-    const randomReq = REQUEST_MESSAGES[Math.floor(Math.random() * REQUEST_MESSAGES.length)];
-    // We don't add to chat history yet, just visual flair if needed, but per prompt, we just suck in words.
-    
     const words = generateRandomWords(question);
     setSuckingWords(words);
 
-    // 1. Slide Message Panel Down & Fade
-    tl.to(inputContainerRef.current, {
-      y: 300,
-      opacity: 0,
-      duration: 0.8,
-      ease: "power2.in"
-    });
+    // 1. Panel Drops
+    tl.to(inputContainerRef.current, { y: 200, opacity: 0, duration: 0.5, ease: "back.in(1.7)" });
 
-    // 2. Launch Icon to Absolute Center
-    // We use a fixed positioned clone logic or just move the fixed icon.
-    // The icon is currently relative in the input bar. 
-    // Trick: We will measure its current pos, set it to fixed, then animate.
+    // 2. Icon Launches to Center
     const iconRect = iconRef.current.getBoundingClientRect();
     
-    tl.set(iconRef.current, {
-      position: 'fixed',
-      left: iconRect.left,
-      top: iconRect.top,
-      zIndex: 100,
-      margin: 0
-    });
+    // Fix position for animation
+    tl.set(iconRef.current, { position: 'fixed', left: iconRect.left, top: iconRect.top, zIndex: 100, margin: 0 });
 
     tl.to(iconRef.current, {
-      left: screenCenterX - 24, // 24 is half width (w-12)
+      left: screenCenterX - 24, 
       top: screenCenterY - 24,
-      scale: 5,
-      duration: 1.5,
-      ease: "expo.inOut",
+      scale: 4,
+      borderRadius: "50%",
       backgroundColor: "#000",
-      color: "#fff",
-      borderWidth: '2px',
-      borderColor: "#a855f7", // purple-500
-    }, "<"); // Run parallel
-
-    // 3. Black Hole Event Horizon
-    tl.add(() => {
-      document.body.classList.add('cinematic-darkness');
+      borderColor: "#fff",
+      duration: 1.5,
+      ease: "power2.inOut"
     });
 
-    // Intense pulsating glow
+    // 3. Black Hole Effects
+    tl.add(() => document.body.classList.add('cinematic-active'), "-=0.5");
+
+    // Icon Glow pulse
     tl.to(iconRef.current, {
-      boxShadow: "0 0 60px 20px rgba(168, 85, 247, 0.6), inset 0 0 50px #000",
+      boxShadow: "0 0 100px 30px rgba(168, 85, 247, 0.8), inset 0 0 20px #fff",
       duration: 0.1,
       repeat: 40,
       yoyo: true
     });
 
-    // 4. Suck words into the center (Blackhole Physics)
-    // We delay slightly so they appear then get sucked
+    // 4. Suck words (Spiral)
     tl.add(() => {
        const wordElements = document.querySelectorAll('.sucking-word');
        if (wordElements.length) {
-         // Animate them towards center with spiral effect
          gsap.to(wordElements, {
            left: screenCenterX,
            top: screenCenterY,
            scale: 0,
            opacity: 0,
-           rotation: "+=720",
-           duration: 3,
-           stagger: {
-             amount: 2,
-             from: "random"
-           },
-           ease: "power3.in"
+           rotation: "+=1080",
+           duration: 4,
+           stagger: { amount: 1, from: "random" },
+           ease: "power4.in"
          });
        }
     }, "-=3");
 
-    // 5. Random Wait (5-10s)
-    const delay = Math.random() * 5 + 5; 
+    // 5. Random Wait (Suspense)
+    const delay = Math.random() * 3 + 4; // 4 to 7 seconds
     tl.to({}, { duration: delay });
 
-    // 6. The Boom & Flash
+    // 6. The Boom
     tl.add(() => {
       playSound('boom');
-      document.body.classList.remove('cinematic-darkness');
+      document.body.classList.remove('cinematic-active');
       
       const flash = document.createElement('div');
       flash.className = 'fixed inset-0 bg-white z-[150] pointer-events-none mix-blend-screen';
@@ -484,20 +444,11 @@ export default function App() {
       gsap.to(flash, { opacity: 0, duration: 1.5, onComplete: () => flash.remove() });
     });
 
-    // 7. Reset Icon to Natural Position (Top Left of new message)
-    // We can't know exactly where the new message will be before it renders, 
-    // so we animate it to a generic position off-screen or fade it out and let React render the static one.
-    
-    tl.to(iconRef.current, {
-      scale: 0,
-      opacity: 0,
-      duration: 0.2,
-      ease: "power4.out"
-    });
+    // 7. Icon Moves to Chat (generic position)
+    tl.to(iconRef.current, { scale: 0, opacity: 0, duration: 0.2 });
 
     tl.add(() => {
       setSuckingWords([]);
-      // Reset inline styles from GSAP
       gsap.set(iconRef.current, { clearProps: "all" });
       finishProcessing(answer, true);
     });
@@ -505,129 +456,88 @@ export default function App() {
 
   const finishProcessing = (text, wasCinematic) => {
     setSecretAnswer('');
-    setPetitionComplete(false);
+    setPetitionComplete(false); // Reset for next loop
     setIsSecretMode(false);
     
-    // Add AI Response
     setChatHistory(prev => [...prev, { role: 'ai', text: text }]);
     playSound('message');
 
-    // Restore Input Panel
+    // Restore Input
     if (wasCinematic) {
       gsap.set(inputContainerRef.current, { y: 100, opacity: 0 });
-      gsap.to(inputContainerRef.current, {
-        y: 0,
-        opacity: 1,
-        duration: 0.6,
-        ease: "power2.out",
-        delay: 0.2
-      });
+      gsap.to(inputContainerRef.current, { y: 0, opacity: 1, duration: 0.5, ease: "power2.out", delay: 0.2 });
+    } else {
+        setStage('idle');
     }
-
-    setStage('idle');
+    
+    if(wasCinematic) setStage('idle');
     updateCount();
   };
 
   // --- Render ---
 
   return (
-    <div 
-      ref={containerRef} 
-      className={cn(
-        "relative w-full h-screen font-sans overflow-hidden bg-[#050505] text-white",
-        "selection:bg-purple-500/30 selection:text-white"
-      )}
-      style={{ cursor: CUSTOM_CURSOR }}
-    >
+    <div className="relative w-full h-screen font-sans overflow-hidden bg-[#050505] text-white selection:bg-purple-500/30 selection:text-white" style={{ cursor: CUSTOM_CURSOR }}>
+      
+      {/* Global Styles for Animations */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
         body { font-family: 'Geist', sans-serif; }
-        .cinematic-darkness::after {
-          content: ''; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 90; transition: background 3s ease-in; pointer-events: none;
+        .cinematic-active::after {
+          content: ''; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 70; transition: background 2s ease; pointer-events: none;
         }
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.4; transform: scale(1); }
-          50% { opacity: 0.6; transform: scale(1.1); }
-        }
-        .animate-pulse-slow { animation: pulse-slow 8s infinite; }
-        
-        @keyframes shimmer {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-shimmer { animation: shimmer 2s infinite linear; }
-
-        @keyframes border-rotate {
-          100% { transform: rotate(1turn); }
-        }
-        .iridescent-border {
-          position: relative;
-          z-index: 0;
-          overflow: hidden;
-          border-radius: 9999px; /* full rounded */
-        }
-        .iridescent-border::before {
-          content: '';
-          position: absolute;
-          z-index: -2;
-          left: -50%;
-          top: -50%;
-          width: 200%;
-          height: 200%;
-          background-repeat: no-repeat;
-          background-position: 0 0;
-          background-image: conic-gradient(transparent, #a855f7, #3b82f6, #06b6d4, transparent 30%);
-          animation: border-rotate 4s linear infinite;
-        }
-        .iridescent-border::after {
-          content: '';
-          position: absolute;
-          z-index: -1;
-          left: 1px;
-          top: 1px;
-          width: calc(100% - 2px);
-          height: calc(100% - 2px);
-          background: #000;
-          border-radius: 9999px;
-        }
-        
-        /* Scrollbar Hide */
+        @keyframes hole-expand { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes disk-spin { 0% { transform: rotate(0deg) scale(0.8); opacity:0; } 50% { opacity: 0.8; } 100% { transform: rotate(360deg) scale(1.1); opacity: 0; } }
+        @keyframes pulse-slow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.5; } }
+        .animate-pulse-slow { animation: pulse-slow 6s infinite ease-in-out; }
+        .animate-hole-expand { animation: hole-expand 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-disk-spin { animation: disk-spin 3s linear infinite; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       
       <BackgroundLayers />
+      
+      {/* Black Hole Overlay */}
+      <BlackHole active={stage === 'processing' && suckingWords.length > 0} />
 
       <div className="flex flex-col h-full relative z-10 max-w-4xl mx-auto w-full">
         
+        {/* --- Header --- */}
+        <header className="flex justify-between items-center p-6 border-b border-white/5 backdrop-blur-sm">
+           <div className="flex items-center gap-2">
+             <MuxLogo className="h-6 text-white" />
+             <span className="text-xs font-mono text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded-full">v2.0.4-beta</span>
+           </div>
+           <div className="flex gap-2 text-xs font-mono text-gray-500">
+             <span>LAT: {mousePos.x}</span>
+             <span>LON: {mousePos.y}</span>
+           </div>
+        </header>
+
         {/* --- Chat Area --- */}
         <main className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
-           <div className="space-y-8 pb-32">
+           <div className="space-y-6 pb-32">
               <AnimatePresence mode='popLayout'>
                 {chatHistory.map((msg, i) => (
                   <motion.div 
                     key={i}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 10, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={cn(
-                      "flex gap-4 w-full",
-                      msg.role === 'user' ? "justify-end" : "justify-start"
-                    )}
+                    className={cn("flex gap-4 w-full", msg.role === 'user' ? "justify-end" : "justify-start")}
                   >
                     {/* AI Avatar */}
                     {msg.role === 'ai' && (
-                      <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center bg-black/50 backdrop-blur-sm flex-shrink-0 mt-1 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
-                        <MuxLogo className="w-6 h-6 text-white" />
+                      <div className="w-8 h-8 rounded-full border border-purple-500/30 flex items-center justify-center bg-black/50 backdrop-blur-md shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                        <MuxLogo className="w-4 h-4 text-white" />
                       </div>
                     )}
-
                     <div className={cn(
-                      "max-w-[85%] md:max-w-[75%] p-4 rounded-2xl shadow-lg backdrop-blur-md text-sm md:text-base leading-relaxed border",
+                      "max-w-[85%] md:max-w-[75%] p-4 rounded-2xl text-sm md:text-base leading-relaxed border backdrop-blur-xl",
                       msg.role === 'ai' 
-                       ? "bg-white/5 border-white/5 text-gray-200 rounded-tl-sm" 
-                       : "bg-purple-600/20 border-purple-500/30 text-white rounded-tr-sm"
+                       ? "bg-white/5 border-white/10 text-gray-200 rounded-tl-none shadow-lg" 
+                       : "bg-purple-600/20 border-purple-500/20 text-white rounded-tr-none shadow-[0_0_20px_rgba(147,51,234,0.1)]"
                     )}>
-                       {msg.role === 'ai' && <div className="text-[10px] uppercase tracking-widest text-purple-400 mb-2 opacity-70">MuxDay AI</div>}
+                       {msg.role === 'ai' && <div className="text-[10px] font-bold tracking-widest text-purple-400 mb-1 opacity-80">MUX-CORE</div>}
                        <p className="whitespace-pre-wrap">{msg.text}</p>
                     </div>
                   </motion.div>
@@ -638,73 +548,64 @@ export default function App() {
         </main>
 
         {/* --- Input Area --- */}
-        <div className="w-full px-6 pb-8 pt-4 z-50">
-           <div ref={inputContainerRef} className="relative">
+        <div className="w-full px-4 pb-8 pt-4 z-50">
+           <div ref={inputContainerRef} className="relative transition-all">
               
-              {/* Particle Words for Animation */}
+              {/* Particle Words */}
               {suckingWords.map((word) => (
-                 <div 
-                   key={word.id}
-                   className="sucking-word fixed text-purple-400 font-mono text-xs font-bold pointer-events-none z-[200] opacity-80"
-                   style={{ 
-                     left: word.x + window.innerWidth/2, 
-                     top: word.y + window.innerHeight/2,
-                     transform: `rotate(${word.rotation}deg)`
-                   }}
+                 <div key={word.id} className="sucking-word fixed text-purple-300/80 font-mono text-[10px] font-bold pointer-events-none z-[120]"
+                   style={{ left: word.x + window.innerWidth/2, top: word.y + window.innerHeight/2, transform: `rotate(${word.rotation}deg)` }}
                  >
                    {word.text}
                  </div>
               ))}
 
-              {/* Iridescent Input Container */}
-              <div className={cn(
-                 "iridescent-border flex items-center gap-2 p-1 transition-all duration-300",
-                 stage === 'lockdown' ? "opacity-50 grayscale pointer-events-none" : ""
+              {/* Input Box */}
+              <div className={cn("relative p-[1px] rounded-full transition-all duration-300 group", 
+                  stage === 'lockdown' ? "opacity-50 grayscale pointer-events-none" : "hover:shadow-[0_0_30px_rgba(168,85,247,0.3)]"
               )}>
-                 <div className="relative flex-1 flex items-center pl-4 bg-black rounded-full h-[54px] w-full">
+                 {/* Gradient Border */}
+                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-600 via-blue-500 to-purple-600 opacity-50 group-hover:opacity-100 transition-opacity animate-shimmer bg-[length:200%_100%]"></div>
+                 
+                 <div className="relative flex items-center pl-6 pr-2 bg-[#0a0a0a] rounded-full h-[60px] w-full">
                     <input
                       type="text"
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder={petitionComplete ? "Ask anything..." : "Initialize protocol..."}
-                      className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 font-medium h-full w-full"
+                      placeholder={petitionComplete ? "Ask the oracle..." : "Initialize petition protocol..."}
+                      className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/20 font-medium h-full w-full tracking-wide"
                       autoComplete="off"
                       autoFocus
                       disabled={stage === 'processing' || stage === 'lockdown'}
                     />
                     
                     {/* The Mux Send Icon */}
-                    <div className="pr-1">
-                      <div 
-                          ref={iconRef}
-                          onClick={handleSubmit}
-                          className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 hover:scale-110 active:scale-95",
-                            petitionComplete ? "bg-white text-black" : "bg-white/10 text-white/50"
-                          )}
-                      >
-                         <MuxLogo className="w-5 h-5" />
-                      </div>
+                    <div 
+                        ref={iconRef}
+                        onClick={handleStep}
+                        className={cn(
+                          "w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 hover:scale-105 active:scale-95 border",
+                          petitionComplete 
+                             ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.4)]" 
+                             : "bg-white/5 text-white/30 border-white/10"
+                        )}
+                    >
+                       <MuxLogo className="w-6 h-6" />
                     </div>
                  </div>
               </div>
               
-              {/* Footer / Helper Text */}
+              {/* Status Bar */}
               <div className="flex justify-between items-center mt-3 px-4">
                  <div className="text-[10px] text-white/30 font-mono tracking-wider flex items-center gap-2">
-                   <div className={cn("w-1.5 h-1.5 rounded-full", petitionComplete ? "bg-purple-500 animate-pulse" : "bg-gray-600")}></div>
-                   {petitionComplete ? "SYSTEM ARMED" : "STANDBY"}
+                   <div className={cn("w-1.5 h-1.5 rounded-full transition-colors duration-300", petitionComplete ? "bg-purple-500 shadow-[0_0_10px_#a855f7]" : "bg-red-900")}></div>
+                   {petitionComplete ? "NEURAL BRIDGE: ACTIVE" : "SYSTEM STANDBY"}
                  </div>
-                 {isSecretMode && (
-                   <div className="text-[10px] text-purple-500/40 font-mono">
-                     DEV_OVERRIDE {isSecretFrozen ? "[FROZEN]" : ""}
-                   </div>
-                 )}
+                 {isSecretMode && <div className="text-[10px] text-purple-900 font-mono">DEV_MODE</div>}
               </div>
            </div>
         </div>
-
       </div>
 
       {/* --- Lockdown Overlay --- */}
@@ -713,39 +614,29 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-8 text-center backdrop-blur-2xl font-mono"
+            className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-8 text-center backdrop-blur-3xl"
           >
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-red-600 blur-[60px] opacity-20 animate-pulse"></div>
-              <Lock size={80} className="text-red-500 relative z-10" weight="duotone" />
+            <div className="relative mb-8 group">
+              <div className="absolute inset-0 bg-red-600 blur-[80px] opacity-20 animate-pulse"></div>
+              <Lock size={96} className="text-red-500 relative z-10 drop-shadow-[0_0_25px_rgba(239,68,68,0.5)]" weight="duotone" />
+              <Warning size={32} className="text-white absolute -top-2 -right-2 z-20 animate-bounce" weight="fill" />
             </div>
             
-            <h2 className="text-5xl md:text-7xl font-bold text-white mb-4 tracking-tighter">SYSTEM HALTED</h2>
-            <div className="flex flex-col items-center gap-2 mb-12">
-               <p className="text-red-400 uppercase tracking-[0.2em] text-sm">Token Limit Exceeded</p>
-               <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500">
+            <h2 className="text-6xl font-black text-white mb-6 tracking-tighter">SYSTEM HALTED</h2>
+            <div className="flex flex-col items-center gap-4 mb-12 bg-white/5 p-6 rounded-2xl border border-white/10">
+               <p className="text-red-400 uppercase tracking-[0.3em] text-xs font-bold">Token Limit Exceeded</p>
+               <div className="text-5xl font-mono font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500 drop-shadow-sm">
                  {timeRemaining}
-               </div>
-            </div>
-            
-            <div className="w-full max-w-sm bg-black border border-red-500/30 p-6 rounded-xl mb-8 relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-[1px] bg-red-500 animate-shimmer"></div>
-               <div className="flex justify-between items-end mb-2 text-red-400 text-xs">
-                 <span>NEURAL LOAD</span>
-                 <span className="text-xl font-bold text-red-500">100%</span>
-               </div>
-               <div className="w-full h-2 bg-red-950/50 rounded-full overflow-hidden">
-                  <div className="h-full w-full bg-gradient-to-r from-red-800 to-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
                </div>
             </div>
 
             <button 
               onClick={() => setUpgradeModal(true)}
-              className="group relative px-8 py-4 bg-white text-black font-bold rounded-full overflow-hidden transition-transform hover:scale-105"
+              className="group relative px-10 py-5 bg-white text-black font-bold rounded-full overflow-hidden hover:scale-105 transition-transform"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 via-white to-yellow-200 opacity-0 group-hover:opacity-50 transition-opacity"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 via-white to-yellow-200 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="flex items-center gap-3 relative z-10">
-                <Sparkle weight="fill" className="text-yellow-600" />
+                <Sparkle weight="fill" className="text-yellow-600 animate-spin-slow" />
                 <span>UPGRADE TO INFINITE</span>
               </div>
             </button>
@@ -757,34 +648,32 @@ export default function App() {
       <AnimatePresence>
         {upgradeModal && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+            initial={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl"
+            className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/60"
           >
             <div className="bg-[#0a0a0a] border border-white/10 p-[1px] rounded-3xl shadow-2xl max-w-sm w-full relative overflow-hidden">
-               {/* Modal Border Gradient */}
-               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
-               
-               <div className="bg-black/90 p-8 rounded-3xl relative h-full">
-                 <button onClick={() => setUpgradeModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-20"><X size={20} /></button>
+               <div className="bg-black/90 p-8 rounded-3xl relative h-full flex flex-col items-center text-center">
+                 <button onClick={() => setUpgradeModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors"><X size={20} /></button>
                  
-                 <div className="flex flex-col items-center text-center">
-                   <div className="relative mb-6">
-                      <div className="absolute inset-0 bg-purple-500 blur-xl opacity-30"></div>
-                      <Globe size={48} className="text-purple-400 relative z-10 animate-pulse-slow" weight="duotone" />
-                   </div>
-                   
-                   <h3 className="text-2xl font-bold text-white mb-2">Region Locked</h3>
-                   <div className="w-8 h-1 bg-purple-500 rounded-full mb-6"></div>
-                   
-                   <p className="text-sm text-gray-400 mb-8 leading-relaxed">
-                     <span className="text-purple-400 font-semibold">MuxDay Infinite</span> is strictly limited to verified timelines. Your current sector <span className="text-white bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-mono border border-white/10">EARTH-1</span> is not supported by the neural bridge.
-                   </p>
-                   
-                   <button onClick={() => setUpgradeModal(false)} className="w-full py-3 bg-white text-black hover:bg-gray-200 rounded-xl text-sm font-bold transition-colors">
-                     Acknowledge
-                   </button>
+                 <div className="relative mb-6">
+                      <div className="absolute inset-0 bg-purple-500 blur-2xl opacity-40"></div>
+                      <Globe size={56} className="text-purple-300 relative z-10" weight="duotone" />
+                 </div>
+                 
+                 <h3 className="text-2xl font-bold text-white mb-2">Region Locked</h3>
+                 <div className="w-12 h-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full mb-6"></div>
+                 
+                 <p className="text-sm text-gray-400 mb-8 leading-relaxed">
+                   <span className="text-purple-400 font-bold">MuxDay Infinite</span> is not available in your current timeline <span className="text-xs bg-white/10 px-1 rounded border border-white/10">EARTH-1218</span>.
+                 </p>
+                 
+                 <div className="w-full flex gap-3">
+                    <div className="h-2 flex-1 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="h-full w-[10%] bg-red-500"></div>
+                    </div>
+                    <span className="text-[10px] text-red-500 font-mono">VPN DETECTED</span>
                  </div>
                </div>
             </div>
