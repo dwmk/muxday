@@ -1,3 +1,3 @@
-# muxday
+# ⚛️ MuxDay
 
-landing branch
+smartest AI on the planet (?)
