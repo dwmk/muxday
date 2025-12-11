@@ -1,11 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { 
-  CaretRight, Lock, CircleNotch, Sparkle, Globe, 
-  Sun, Moon, Sidebar, Plus, DotsThree, Lightning,
-  Cpu, Aperture, PaperPlaneRight, X
-} from '@phosphor-icons/react';
+import { Lock, Sparkle, Globe, X, Lightning } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -52,6 +48,17 @@ const DENIAL_PHRASES = [
   "I don't feel like it right now.",
 ];
 
+const REQUEST_MESSAGES = [
+  "Granting temporary access...",
+  "Bypassing mainframe firewall...",
+  "Handshake accepted...",
+  "Decrypting neural patterns...",
+  "Tokenizing request...",
+  "Connecting to Sector 7...",
+  "Initializing Mux-Core...",
+  "Establishing quantum tunnel...",
+];
+
 const MAX_DAILY_MESSAGES = 3;
 const LOCKDOWN_HOURS = 24;
 
@@ -68,14 +75,22 @@ const playSound = (type) => {
 
   const now = ctx.currentTime;
 
-  if (type === 'pulse') {
+  if (type === 'pulse_success') {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(200, now);
-    osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
     gain.gain.setValueAtTime(0.1, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
     osc.start(now);
-    osc.stop(now + 0.5);
+    osc.stop(now + 0.6);
+  } else if (type === 'pulse_fail') {
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.linearRampToValueAtTime(100, now + 0.2);
+    gain.gain.setValueAtTime(0.1, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    osc.start(now);
+    osc.stop(now + 0.4);
   } else if (type === 'denial') {
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, now);
@@ -85,19 +100,30 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 0.3);
   } else if (type === 'rumble') {
+    // Deep sci-fi rumble
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sawtooth';
+    osc2.frequency.setValueAtTime(30, now);
+    osc2.connect(gain);
+    osc2.start(now);
+    osc2.stop(now + 10);
+
     osc.type = 'triangle';
-    osc.frequency.setValueAtTime(50, now);
-    osc.frequency.linearRampToValueAtTime(150, now + 8); 
+    osc.frequency.setValueAtTime(40, now);
+    osc.frequency.linearRampToValueAtTime(180, now + 8); 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 4);
+    gain.gain.linearRampToValueAtTime(0.3, now + 4);
     osc.start(now);
     osc.stop(now + 10);
   } else if (type === 'boom') {
+    // Sonic boom
     osc.type = 'square';
     osc.frequency.setValueAtTime(50, now);
-    osc.frequency.exponentialRampToValueAtTime(20, now + 1);
+    osc.frequency.exponentialRampToValueAtTime(10, now + 1);
     gain.gain.setValueAtTime(1, now);
     gain.gain.exponentialRampToValueAtTime(0.01, now + 2);
+    
+    // Noise burst
     const bufferSize = ctx.sampleRate * 2; 
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -110,6 +136,7 @@ const playSound = (type) => {
     noiseGain.gain.setValueAtTime(0.8, now);
     noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
     noise.start(now);
+    
     osc.start(now);
     osc.stop(now + 2);
   } else if (type === 'message') {
@@ -122,44 +149,49 @@ const playSound = (type) => {
   }
 };
 
-// --- Components ---
+// --- Background Components ---
 
-const AuroraBackground = ({ isDark }) => (
-  <div className={cn("fixed inset-0 z-0 pointer-events-none transition-opacity duration-1000", isDark ? "opacity-30" : "opacity-60")}>
-    <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-400 rounded-full blur-[120px] opacity-40 animate-blob mix-blend-multiply dark:mix-blend-screen" />
-    <div className="absolute top-[20%] right-[-10%] w-[50%] h-[60%] bg-blue-300 rounded-full blur-[120px] opacity-40 animate-blob animation-delay-2000 mix-blend-multiply dark:mix-blend-screen" />
-    <div className="absolute bottom-[-10%] left-[20%] w-[60%] h-[50%] bg-pink-300 rounded-full blur-[120px] opacity-40 animate-blob animation-delay-4000 mix-blend-multiply dark:mix-blend-screen" />
+const BackgroundLayers = () => (
+  <div className="fixed inset-0 z-0 pointer-events-none bg-[#0a0a0a] overflow-hidden">
+    {/* Mesh Gradient */}
+    <div className="absolute inset-0 opacity-40">
+        <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(88,28,135,0.4),_transparent_70%)] blur-[100px] animate-pulse-slow"></div>
+        <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,_rgba(59,130,246,0.3),_transparent_70%)] blur-[100px] animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[40%] left-[40%] w-[50%] h-[50%] bg-[radial-gradient(circle_at_center,_rgba(236,72,153,0.2),_transparent_70%)] blur-[80px] animate-pulse-slow" style={{ animationDelay: '4s' }}></div>
+    </div>
+    
+    {/* Dot Matrix with Gradient Fade */}
+    <div className="absolute inset-0 bg-[radial-gradient(#ffffff15_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_60%_at_50%_50%,#000_10%,transparent_100%)]"></div>
+    
+    {/* SVG Noise Filter */}
+    <svg className="fixed inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay">
+      <filter id="noise">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="3" stitchTiles="stitch" />
+      </filter>
+      <rect width="100%" height="100%" filter="url(#noise)" />
+    </svg>
   </div>
 );
 
-const DotGrid = ({ isDark }) => (
-  <div 
-    className={cn(
-      "fixed inset-0 z-0 pointer-events-none opacity-[0.03]",
-      isDark ? "bg-[radial-gradient(#fff_1px,transparent_1px)]" : "bg-[radial-gradient(#000_1px,transparent_1px)]"
-    )} 
-    style={{ backgroundSize: '24px 24px' }} 
-  />
-);
-
 export default function App() {
-  // State
-  const [isDark, setIsDark] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // --- State ---
   const [stage, setStage] = useState('idle'); // idle, processing, lockdown
   const [inputValue, setInputValue] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    { role: 'ai', text: 'MuxDay v4.0 Online. Initializing heuristic core. Ready for neural handshake.' }
-  ]);
+  const [chatHistory, setChatHistory] = useState([]);
   
   // Secret Mechanics
   const [secretAnswer, setSecretAnswer] = useState('');
   const [isSecretMode, setIsSecretMode] = useState(false);
+  const [isSecretFrozen, setSecretFrozen] = useState(false);
   const [petitionComplete, setPetitionComplete] = useState(false);
+  
+  // Lockdown Mechanics
   const [dailyCount, setDailyCount] = useState(0);
+  const [lockdownEndTime, setLockdownEndTime] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState('00:00:00');
   const [upgradeModal, setUpgradeModal] = useState(false);
   
-  // Particle effects state for Blackhole
+  // Particle effects state
   const [suckingWords, setSuckingWords] = useState([]);
 
   // Refs
@@ -171,29 +203,68 @@ export default function App() {
   // --- Effects ---
 
   useEffect(() => {
-    // Scroll to bottom on new message
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
+  // Persistence & Lockdown Timer
   useEffect(() => {
-    // Check Persistence
-    const stored = JSON.parse(localStorage.getItem('muxday_data') || '{}');
-    const now = Date.now();
-    if (stored.timestamp && now - stored.timestamp < LOCKDOWN_HOURS * 60 * 60 * 1000) {
-      setDailyCount(stored.count || 0);
-      if (stored.count >= MAX_DAILY_MESSAGES) setStage('lockdown');
-    } else {
-      localStorage.setItem('muxday_data', JSON.stringify({ count: 0, timestamp: now }));
-      setDailyCount(0);
-    }
+    const checkStorage = () => {
+      const stored = JSON.parse(localStorage.getItem('muxday_data') || '{}');
+      const now = Date.now();
+      const lockoutTime = LOCKDOWN_HOURS * 60 * 60 * 1000;
+
+      if (stored.timestamp && now - stored.timestamp < lockoutTime) {
+        setDailyCount(stored.count || 0);
+        if (stored.count >= MAX_DAILY_MESSAGES) {
+          setStage('lockdown');
+          setLockdownEndTime(stored.timestamp + lockoutTime);
+        }
+      } else {
+        localStorage.setItem('muxday_data', JSON.stringify({ count: 0, timestamp: now }));
+        setDailyCount(0);
+      }
+    };
+    checkStorage();
   }, []);
+
+  // Real-time Countdown
+  useEffect(() => {
+    if (stage !== 'lockdown' || !lockdownEndTime) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const diff = lockdownEndTime - now;
+
+      if (diff <= 0) {
+        setStage('idle');
+        setDailyCount(0);
+        localStorage.setItem('muxday_data', JSON.stringify({ count: 0, timestamp: now }));
+        clearInterval(interval);
+      } else {
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((diff / (1000 * 60)) % 60);
+        const s = Math.floor((diff / 1000) % 60);
+        setTimeRemaining(
+          `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+        );
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [stage, lockdownEndTime]);
 
   const updateCount = () => {
     const newCount = dailyCount + 1;
     setDailyCount(newCount);
-    localStorage.setItem('muxday_data', JSON.stringify({ count: newCount, timestamp: Date.now() }));
+    // If we hit limit, store timestamp of the 3rd message
+    const now = Date.now();
+    localStorage.setItem('muxday_data', JSON.stringify({ count: newCount, timestamp: now }));
+    
     if (newCount >= MAX_DAILY_MESSAGES) {
-      setTimeout(() => setStage('lockdown'), 2000);
+      setTimeout(() => {
+        setStage('lockdown');
+        setLockdownEndTime(now + (LOCKDOWN_HOURS * 60 * 60 * 1000));
+      }, 2000);
     }
   };
 
@@ -207,17 +278,29 @@ export default function App() {
       if (e.key === '.') {
         e.preventDefault();
         setIsSecretMode(!isSecretMode);
+        setSecretFrozen(false);
         return;
       }
 
       if (isSecretMode) {
+        // Freeze Key Logic
+        if (e.key === '\\') {
+          e.preventDefault();
+          setSecretFrozen(true);
+          return;
+        }
+
         if (e.key === 'Backspace') {
-          setSecretAnswer((prev) => prev.slice(0, -1));
+          if (!isSecretFrozen) setSecretAnswer((prev) => prev.slice(0, -1));
           setInputValue((prev) => prev.slice(0, -1));
         } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
           e.preventDefault();
-          setSecretAnswer((prev) => prev + e.key);
-          // Type fake text
+          
+          if (!isSecretFrozen) {
+            setSecretAnswer((prev) => prev + e.key);
+          }
+          
+          // Always type fake text on frontend
           const petitionBase = PETITION_PLACEHOLDERS[0];
           const nextChar = petitionBase[inputValue.length] || " ";
           setInputValue((prev) => prev + nextChar);
@@ -237,9 +320,12 @@ export default function App() {
     if (!petitionComplete) {
       setPetitionComplete(true);
       setInputValue('');
+      setSecretFrozen(false); // Reset freeze for next prompt if needed
       
-      const pulseColor = isSecretMode ? '#8b5cf6' : '#ef4444'; 
-      playSound('pulse');
+      const pulseColor = (isSecretMode && secretAnswer.length > 0) ? '#8b5cf6' : '#ef4444'; 
+      const soundType = (isSecretMode && secretAnswer.length > 0) ? 'pulse_success' : 'pulse_fail';
+      
+      playSound(soundType);
 
       // Radial Pulse Animation
       gsap.to(iconRef.current, {
@@ -254,8 +340,15 @@ export default function App() {
 
     // STEP 2: Actual Question -> Launch
     const question = inputValue;
-    // Decision logic
-    const answer = isSecretMode && secretAnswer ? secretAnswer : DENIAL_PHRASES[Math.floor(Math.random() * DENIAL_PHRASES.length)];
+    
+    // Determine Answer
+    let answer = "";
+    if (isSecretMode && secretAnswer.length > 0) {
+      answer = secretAnswer;
+    } else {
+      answer = DENIAL_PHRASES[Math.floor(Math.random() * DENIAL_PHRASES.length)];
+    }
+
     const actuallyActivated = isSecretMode && secretAnswer.length > 0;
 
     setInputValue('');
@@ -263,30 +356,33 @@ export default function App() {
     setChatHistory(prev => [...prev, { role: 'user', text: question }]);
 
     if (!actuallyActivated) {
-      // Fast Fail (Red)
+      // FAST FAIL PATH (No cinematics)
       playSound('denial');
+      // Flash red
       gsap.to(iconRef.current, { backgroundColor: '#ef4444', duration: 0.2, yoyo: true, repeat: 3 });
-      await new Promise(r => setTimeout(r, 800));
+      
+      // Move to chat position instantly
+      await new Promise(r => setTimeout(r, 600));
       finishProcessing(answer, false);
     } else {
-      // Cinematic Success
+      // CINEMATIC SUCCESS PATH
       runCinematicSequence(question, answer);
     }
   };
 
   const generateRandomWords = (sourceText) => {
-    const baseWords = ["ENTROPY", "NULL", "VOID", "DATA", "SYNAPSE", "QUANTUM", "MUX", "VECTOR", "TENSOR", "HYPER"];
+    const baseWords = ["ENTROPY", "NULL", "VOID", "DATA", "SYNAPSE", "QUANTUM", "MUX", "VECTOR", "TENSOR", "HYPER", "EVENT", "HORIZON"];
     const sourceWords = sourceText.split(' ').map(w => w.toUpperCase()).filter(w => w.length > 3);
     const pool = [...baseWords, ...sourceWords];
     
-    // Generate 20 floating words
-    return Array.from({ length: 20 }).map((_, i) => ({
+    return Array.from({ length: 25 }).map((_, i) => ({
       id: i,
       text: pool[Math.floor(Math.random() * pool.length)],
-      // Random positions around the center
-      x: (Math.random() - 0.5) * window.innerWidth * 0.8,
-      y: (Math.random() - 0.5) * window.innerHeight * 0.8,
-      rotation: Math.random() * 360
+      // Spawn somewhat off-center
+      x: (Math.random() - 0.5) * window.innerWidth,
+      y: (Math.random() - 0.5) * window.innerHeight,
+      rotation: Math.random() * 360,
+      scale: Math.random() * 0.5 + 0.5
     }));
   };
 
@@ -297,95 +393,112 @@ export default function App() {
 
     playSound('rumble');
     
-    // Populate sucking words
+    // Add request message during pre-sequence
+    const randomReq = REQUEST_MESSAGES[Math.floor(Math.random() * REQUEST_MESSAGES.length)];
+    // We don't add to chat history yet, just visual flair if needed, but per prompt, we just suck in words.
+    
     const words = generateRandomWords(question);
     setSuckingWords(words);
 
-    // 1. Hide Input Bar (Slide Down)
+    // 1. Slide Message Panel Down & Fade
     tl.to(inputContainerRef.current, {
-      y: 150,
+      y: 300,
       opacity: 0,
-      duration: 0.5,
+      duration: 0.8,
       ease: "power2.in"
     });
 
-    // 2. Launch Icon to Center
+    // 2. Launch Icon to Absolute Center
+    // We use a fixed positioned clone logic or just move the fixed icon.
+    // The icon is currently relative in the input bar. 
+    // Trick: We will measure its current pos, set it to fixed, then animate.
     const iconRect = iconRef.current.getBoundingClientRect();
-    const deltaX = screenCenterX - (iconRect.left + iconRect.width/2);
-    const deltaY = screenCenterY - (iconRect.top + iconRect.height/2);
+    
+    tl.set(iconRef.current, {
+      position: 'fixed',
+      left: iconRect.left,
+      top: iconRect.top,
+      zIndex: 100,
+      margin: 0
+    });
 
     tl.to(iconRef.current, {
-      x: deltaX,
-      y: deltaY,
-      scale: 4,
+      left: screenCenterX - 24, // 24 is half width (w-12)
+      top: screenCenterY - 24,
+      scale: 5,
       duration: 1.5,
       ease: "expo.inOut",
       backgroundColor: "#000",
       color: "#fff",
-      borderColor: "#8b5cf6", // violet border
-      zIndex: 50
-    }, "-=0.2");
+      borderWidth: '2px',
+      borderColor: "#a855f7", // purple-500
+    }, "<"); // Run parallel
 
-    // 3. Screen Dimming & Black Hole Effect
+    // 3. Black Hole Event Horizon
     tl.add(() => {
       document.body.classList.add('cinematic-darkness');
     });
 
-    // Pulse the black hole
+    // Intense pulsating glow
     tl.to(iconRef.current, {
-      boxShadow: "0 0 100px 30px rgba(139, 92, 246, 0.6), inset 0 0 40px #fff",
-      duration: 0.2,
-      repeat: 20, // fast flicker
+      boxShadow: "0 0 60px 20px rgba(168, 85, 247, 0.6), inset 0 0 50px #000",
+      duration: 0.1,
+      repeat: 40,
       yoyo: true
     });
 
-    // 4. Suck words in (Parallel Animation)
-    // We use a dummy object to animate the 'progress' of words
-    const wordElements = document.querySelectorAll('.sucking-word');
-    if (wordElements.length) {
-       gsap.to(wordElements, {
-         x: screenCenterX,
-         y: screenCenterY,
-         opacity: 0,
-         scale: 0,
-         duration: 3,
-         stagger: 0.1,
-         ease: "power4.in"
-       });
-    }
+    // 4. Suck words into the center (Blackhole Physics)
+    // We delay slightly so they appear then get sucked
+    tl.add(() => {
+       const wordElements = document.querySelectorAll('.sucking-word');
+       if (wordElements.length) {
+         // Animate them towards center with spiral effect
+         gsap.to(wordElements, {
+           left: screenCenterX,
+           top: screenCenterY,
+           scale: 0,
+           opacity: 0,
+           rotation: "+=720",
+           duration: 3,
+           stagger: {
+             amount: 2,
+             from: "random"
+           },
+           ease: "power3.in"
+         });
+       }
+    }, "-=3");
 
-    // 5. Random Delay (Tension)
-    const delay = Math.random() * 4 + 3; 
+    // 5. Random Wait (5-10s)
+    const delay = Math.random() * 5 + 5; 
     tl.to({}, { duration: delay });
 
-    // 6. The Boom
+    // 6. The Boom & Flash
     tl.add(() => {
       playSound('boom');
       document.body.classList.remove('cinematic-darkness');
       
-      // White Flash
       const flash = document.createElement('div');
-      flash.className = 'fixed inset-0 bg-white z-[100] pointer-events-none';
+      flash.className = 'fixed inset-0 bg-white z-[150] pointer-events-none mix-blend-screen';
       document.body.appendChild(flash);
-      gsap.to(flash, { opacity: 0, duration: 1, onComplete: () => flash.remove() });
+      gsap.to(flash, { opacity: 0, duration: 1.5, onComplete: () => flash.remove() });
     });
 
-    // 7. Reset Icon
+    // 7. Reset Icon to Natural Position (Top Left of new message)
+    // We can't know exactly where the new message will be before it renders, 
+    // so we animate it to a generic position off-screen or fade it out and let React render the static one.
+    
     tl.to(iconRef.current, {
-      x: 0,
-      y: 0,
-      scale: 1,
-      backgroundColor: "transparent",
-      color: "inherit",
-      borderColor: "rgba(255,255,255,0.1)",
-      boxShadow: "none",
-      zIndex: 10,
-      duration: 0.4,
+      scale: 0,
+      opacity: 0,
+      duration: 0.2,
       ease: "power4.out"
     });
 
     tl.add(() => {
       setSuckingWords([]);
+      // Reset inline styles from GSAP
+      gsap.set(iconRef.current, { clearProps: "all" });
       finishProcessing(answer, true);
     });
   };
@@ -395,18 +508,20 @@ export default function App() {
     setPetitionComplete(false);
     setIsSecretMode(false);
     
+    // Add AI Response
     setChatHistory(prev => [...prev, { role: 'ai', text: text }]);
     playSound('message');
 
+    // Restore Input Panel
     if (wasCinematic) {
+      gsap.set(inputContainerRef.current, { y: 100, opacity: 0 });
       gsap.to(inputContainerRef.current, {
         y: 0,
         opacity: 1,
-        duration: 0.5,
+        duration: 0.6,
+        ease: "power2.out",
         delay: 0.2
       });
-    } else {
-      gsap.set(iconRef.current, { backgroundColor: 'transparent' });
     }
 
     setStage('idle');
@@ -419,9 +534,8 @@ export default function App() {
     <div 
       ref={containerRef} 
       className={cn(
-        "relative w-full h-screen font-sans overflow-hidden transition-colors duration-500",
-        isDark ? "bg-[#050505] text-white" : "bg-white text-gray-900",
-        "dark" // Tailwind Class strategy
+        "relative w-full h-screen font-sans overflow-hidden bg-[#050505] text-white",
+        "selection:bg-purple-500/30 selection:text-white"
       )}
       style={{ cursor: CUSTOM_CURSOR }}
     >
@@ -429,221 +543,168 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
         body { font-family: 'Geist', sans-serif; }
         .cinematic-darkness::after {
-          content: ''; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 40; transition: background 2s; pointer-events: none;
+          content: ''; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 90; transition: background 3s ease-in; pointer-events: none;
         }
-        @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.1); }
         }
-        .animate-blob { animation: blob 7s infinite; }
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #8884; border-radius: 10px; }
+        .animate-pulse-slow { animation: pulse-slow 8s infinite; }
+        
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        .animate-shimmer { animation: shimmer 2s infinite linear; }
+
+        @keyframes border-rotate {
+          100% { transform: rotate(1turn); }
+        }
+        .iridescent-border {
+          position: relative;
+          z-index: 0;
+          overflow: hidden;
+          border-radius: 9999px; /* full rounded */
+        }
+        .iridescent-border::before {
+          content: '';
+          position: absolute;
+          z-index: -2;
+          left: -50%;
+          top: -50%;
+          width: 200%;
+          height: 200%;
+          background-repeat: no-repeat;
+          background-position: 0 0;
+          background-image: conic-gradient(transparent, #a855f7, #3b82f6, #06b6d4, transparent 30%);
+          animation: border-rotate 4s linear infinite;
+        }
+        .iridescent-border::after {
+          content: '';
+          position: absolute;
+          z-index: -1;
+          left: 1px;
+          top: 1px;
+          width: calc(100% - 2px);
+          height: calc(100% - 2px);
+          background: #000;
+          border-radius: 9999px;
+        }
+        
+        /* Scrollbar Hide */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       
-      <AuroraBackground isDark={isDark} />
-      <DotGrid isDark={isDark} />
+      <BackgroundLayers />
 
-      <div className="flex h-full relative z-10">
+      <div className="flex flex-col h-full relative z-10 max-w-4xl mx-auto w-full">
         
-        {/* --- Sidebar (LLM Style) --- */}
-        <motion.div 
-          initial={false}
-          animate={{ width: sidebarOpen ? 260 : 0, opacity: sidebarOpen ? 1 : 0 }}
-          className={cn(
-            "flex-shrink-0 h-full border-r overflow-hidden flex flex-col backdrop-blur-xl",
-            isDark ? "bg-black/40 border-white/10" : "bg-gray-50/50 border-gray-200"
-          )}
-        >
-          <div className="p-4 space-y-4 w-[260px]">
-            <button className={cn(
-              "w-full flex items-center gap-2 px-3 py-3 rounded-lg border shadow-sm transition-all hover:shadow-md group",
-              isDark ? "bg-white/5 border-white/10 hover:bg-white/10" : "bg-white border-gray-200 hover:bg-gray-50"
-            )}>
-              <div className="p-1 rounded bg-gradient-to-tr from-purple-500 to-blue-500 text-white">
-                 <Plus weight="bold" />
-              </div>
-              <span className="font-medium text-sm">New Chat</span>
-            </button>
-
-            <div className="space-y-1">
-               <p className="text-xs font-medium opacity-50 px-2 mb-2">Today</p>
-               {['Quantum Physics Help', 'Recipe for Disaster', 'MuxDay Origins'].map((item, i) => (
-                 <div key={i} className="px-3 py-2 rounded-md text-sm cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 truncate opacity-80 hover:opacity-100 transition-colors">
-                   {item}
-                 </div>
-               ))}
-            </div>
-          </div>
-
-          <div className="mt-auto p-4 border-t border-gray-200/10 w-[260px]">
-             <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                  US
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">User Entity</span>
-                  <span className="text-[10px] opacity-50">Free Tier</span>
-                </div>
-             </div>
-          </div>
-        </motion.div>
-
-        {/* --- Main Chat Area --- */}
-        <div className="flex-1 flex flex-col h-full relative">
-          
-          {/* Header */}
-          <header className="flex justify-between items-center px-4 py-3 z-20">
-            <div className="flex items-center gap-3">
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-md hover:bg-black/5 dark:hover:bg-white/5 text-gray-500">
-                <Sidebar size={20} />
-              </button>
-              
-              <div className="flex items-center gap-2 opacity-90 hover:opacity-100 cursor-pointer transition-opacity">
-                <span className="text-lg font-semibold flex items-center gap-2">
-                   MuxDay <span className="opacity-40 font-normal">4.0</span>
-                </span>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setIsDark(!isDark)}
-              className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
-            >
-              {isDark ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-          </header>
-
-          {/* Chat List */}
-          <main className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="max-w-3xl mx-auto space-y-8">
-               {/* Intro Logo (Only if empty history, though we start with 1 msg) */}
-               {chatHistory.length === 0 && (
-                 <div className="flex flex-col items-center justify-center mt-20 opacity-20">
-                    <MuxLogo className="w-32 h-32 text-current" />
-                 </div>
-               )}
-
-               <AnimatePresence mode='popLayout'>
-                 {chatHistory.map((msg, i) => (
-                   <motion.div 
-                     key={i}
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     className={cn(
-                       "flex gap-4 w-full",
-                       msg.role === 'user' ? "justify-end" : "justify-start"
-                     )}
-                   >
-                     {/* AI Avatar */}
-                     {msg.role === 'ai' && (
-                       <div className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 flex items-center justify-center bg-white dark:bg-black flex-shrink-0 mt-1 overflow-hidden">
-                         <MuxLogo className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                       </div>
-                     )}
-
-                     <div className={cn(
-                       "max-w-[85%] lg:max-w-[75%] p-4 rounded-2xl shadow-sm text-sm md:text-base leading-relaxed",
-                       msg.role === 'ai' 
-                        ? (isDark ? "bg-white/5 border border-white/5 text-gray-200" : "bg-white border border-gray-100 text-gray-800")
-                        : "bg-purple-600 text-white rounded-tr-sm"
-                     )}>
-                       {msg.role === 'ai' ? (
-                          <div className="prose dark:prose-invert max-w-none">
-                            <p>{msg.text}</p>
-                          </div>
-                       ) : (
-                          <p>{msg.text}</p>
-                       )}
-                     </div>
-                   </motion.div>
-                 ))}
-               </AnimatePresence>
-               <div ref={chatBottomRef} className="h-4" />
-            </div>
-          </main>
-
-          {/* Input Area (Bottom) */}
-          <div className="w-full px-4 pb-6 pt-2 z-30">
-             <div ref={inputContainerRef} className="max-w-3xl mx-auto relative">
-                
-                {/* Decoration: Typing/Sucking Words (Only visible during cinematic) */}
-                {suckingWords.map((word) => (
-                   <div 
-                     key={word.id}
-                     className="sucking-word fixed text-purple-500 font-mono text-xs font-bold pointer-events-none z-[60]"
-                     style={{ 
-                       left: '50%', 
-                       top: '50%',
-                       transform: `translate(${word.x}px, ${word.y}px) rotate(${word.rotation}deg)` 
-                     }}
-                   >
-                     {word.text}
-                   </div>
-                ))}
-
-                <div 
-                  className={cn(
-                    "relative flex items-end gap-2 p-3 rounded-3xl border shadow-lg transition-all duration-300 ring-1 ring-transparent focus-within:ring-purple-500/50",
-                    isDark ? "bg-[#1a1a1a] border-white/10" : "bg-white border-gray-200"
-                  )}
-                >
-                  <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-white/10 text-gray-400 transition-colors self-end mb-1">
-                    <Plus weight="bold" />
-                  </button>
-
-                  <textarea
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={petitionComplete ? "Ask MuxDay anything..." : "Enter initialization protocol..."}
-                    rows={1}
+        {/* --- Chat Area --- */}
+        <main className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
+           <div className="space-y-8 pb-32">
+              <AnimatePresence mode='popLayout'>
+                {chatHistory.map((msg, i) => (
+                  <motion.div 
+                    key={i}
+                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
                     className={cn(
-                      "flex-1 bg-transparent border-none outline-none resize-none max-h-40 py-3 px-2 font-medium placeholder:opacity-50 min-h-[50px]",
-                      isDark ? "text-white placeholder-gray-500" : "text-gray-900 placeholder-gray-400"
+                      "flex gap-4 w-full",
+                      msg.role === 'user' ? "justify-end" : "justify-start"
                     )}
-                    style={{ scrollbarWidth: 'none' }}
-                  />
+                  >
+                    {/* AI Avatar */}
+                    {msg.role === 'ai' && (
+                      <div className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center bg-black/50 backdrop-blur-sm flex-shrink-0 mt-1 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                        <MuxLogo className="w-6 h-6 text-white" />
+                      </div>
+                    )}
 
-                  {/* The Interactive AI Button */}
-                  <div className="relative w-12 h-12 flex-shrink-0 self-end">
-                     <div 
-                        ref={iconRef}
-                        onClick={handleSubmit}
-                        className={cn(
-                          "absolute right-0 bottom-0 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50",
-                          inputValue.trim() 
-                            ? "bg-black dark:bg-white text-white dark:text-black scale-100" 
-                            : "bg-gray-200 dark:bg-white/10 text-gray-400 dark:text-gray-500 scale-90"
-                        )}
-                     >
-                        {stage === 'processing' ? (
-                          <CircleNotch size={20} className="animate-spin" />
-                        ) : petitionComplete ? (
-                          <PaperPlaneRight size={20} weight="fill" />
-                        ) : (
-                          <CaretRight size={20} weight="bold" />
-                        )}
-                     </div>
-                  </div>
-                </div>
-                
-                <div className="text-center mt-3 text-xs opacity-40 font-mono">
-                   {isSecretMode ? (
-                     <span className="text-purple-500 animate-pulse">ENCRYPTION: BYPASSED</span>
-                   ) : (
-                     "MuxDay can make mistakes. Check important info."
-                   )}
-                </div>
-             </div>
-          </div>
+                    <div className={cn(
+                      "max-w-[85%] md:max-w-[75%] p-4 rounded-2xl shadow-lg backdrop-blur-md text-sm md:text-base leading-relaxed border",
+                      msg.role === 'ai' 
+                       ? "bg-white/5 border-white/5 text-gray-200 rounded-tl-sm" 
+                       : "bg-purple-600/20 border-purple-500/30 text-white rounded-tr-sm"
+                    )}>
+                       {msg.role === 'ai' && <div className="text-[10px] uppercase tracking-widest text-purple-400 mb-2 opacity-70">MuxDay AI</div>}
+                       <p className="whitespace-pre-wrap">{msg.text}</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={chatBottomRef} />
+           </div>
+        </main>
 
+        {/* --- Input Area --- */}
+        <div className="w-full px-6 pb-8 pt-4 z-50">
+           <div ref={inputContainerRef} className="relative">
+              
+              {/* Particle Words for Animation */}
+              {suckingWords.map((word) => (
+                 <div 
+                   key={word.id}
+                   className="sucking-word fixed text-purple-400 font-mono text-xs font-bold pointer-events-none z-[200] opacity-80"
+                   style={{ 
+                     left: word.x + window.innerWidth/2, 
+                     top: word.y + window.innerHeight/2,
+                     transform: `rotate(${word.rotation}deg)`
+                   }}
+                 >
+                   {word.text}
+                 </div>
+              ))}
+
+              {/* Iridescent Input Container */}
+              <div className={cn(
+                 "iridescent-border flex items-center gap-2 p-1 transition-all duration-300",
+                 stage === 'lockdown' ? "opacity-50 grayscale pointer-events-none" : ""
+              )}>
+                 <div className="relative flex-1 flex items-center pl-4 bg-black rounded-full h-[54px] w-full">
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={petitionComplete ? "Ask anything..." : "Initialize protocol..."}
+                      className="flex-1 bg-transparent border-none outline-none text-white placeholder-white/30 font-medium h-full w-full"
+                      autoComplete="off"
+                      autoFocus
+                      disabled={stage === 'processing' || stage === 'lockdown'}
+                    />
+                    
+                    {/* The Mux Send Icon */}
+                    <div className="pr-1">
+                      <div 
+                          ref={iconRef}
+                          onClick={handleSubmit}
+                          className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 hover:scale-110 active:scale-95",
+                            petitionComplete ? "bg-white text-black" : "bg-white/10 text-white/50"
+                          )}
+                      >
+                         <MuxLogo className="w-5 h-5" />
+                      </div>
+                    </div>
+                 </div>
+              </div>
+              
+              {/* Footer / Helper Text */}
+              <div className="flex justify-between items-center mt-3 px-4">
+                 <div className="text-[10px] text-white/30 font-mono tracking-wider flex items-center gap-2">
+                   <div className={cn("w-1.5 h-1.5 rounded-full", petitionComplete ? "bg-purple-500 animate-pulse" : "bg-gray-600")}></div>
+                   {petitionComplete ? "SYSTEM ARMED" : "STANDBY"}
+                 </div>
+                 {isSecretMode && (
+                   <div className="text-[10px] text-purple-500/40 font-mono">
+                     DEV_OVERRIDE {isSecretFrozen ? "[FROZEN]" : ""}
+                   </div>
+                 )}
+              </div>
+           </div>
         </div>
+
       </div>
 
       {/* --- Lockdown Overlay --- */}
@@ -652,33 +713,41 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-8 text-center backdrop-blur-xl font-mono"
+            className="fixed inset-0 z-[100] bg-black/90 flex flex-col items-center justify-center p-8 text-center backdrop-blur-2xl font-mono"
           >
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-500 blur-3xl opacity-20 animate-pulse"></div>
-              <Lock size={64} className="text-red-500 mb-6 relative z-10" />
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-red-600 blur-[60px] opacity-20 animate-pulse"></div>
+              <Lock size={80} className="text-red-500 relative z-10" weight="duotone" />
             </div>
             
-            <h2 className="text-5xl font-bold text-white mb-2 tracking-tighter">SYSTEM HALTED</h2>
-            <p className="text-red-400 max-w-md mb-12 uppercase tracking-widest text-sm">Token Limit Exceeded // Cool Down Active</p>
+            <h2 className="text-5xl md:text-7xl font-bold text-white mb-4 tracking-tighter">SYSTEM HALTED</h2>
+            <div className="flex flex-col items-center gap-2 mb-12">
+               <p className="text-red-400 uppercase tracking-[0.2em] text-sm">Token Limit Exceeded</p>
+               <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-500">
+                 {timeRemaining}
+               </div>
+            </div>
             
-            <div className="w-full max-w-sm bg-red-950/30 border border-red-500/30 p-8 rounded-lg mb-8 relative overflow-hidden group">
-               <div className="absolute top-0 left-0 w-full h-[2px] bg-red-500 animate-shimmer"></div>
+            <div className="w-full max-w-sm bg-black border border-red-500/30 p-6 rounded-xl mb-8 relative overflow-hidden">
+               <div className="absolute top-0 left-0 w-full h-[1px] bg-red-500 animate-shimmer"></div>
                <div className="flex justify-between items-end mb-2 text-red-400 text-xs">
                  <span>NEURAL LOAD</span>
                  <span className="text-xl font-bold text-red-500">100%</span>
                </div>
-               <div className="w-full h-4 bg-black rounded-full overflow-hidden border border-red-900/50">
+               <div className="w-full h-2 bg-red-950/50 rounded-full overflow-hidden">
                   <div className="h-full w-full bg-gradient-to-r from-red-800 to-red-500 shadow-[0_0_15px_rgba(239,68,68,0.5)]"></div>
                </div>
             </div>
 
             <button 
               onClick={() => setUpgradeModal(true)}
-              className="px-8 py-4 bg-white text-black font-bold rounded-full hover:scale-105 transition-transform flex items-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.3)]"
+              className="group relative px-8 py-4 bg-white text-black font-bold rounded-full overflow-hidden transition-transform hover:scale-105"
             >
-              <Sparkle weight="fill" className="text-yellow-600" />
-              <span>UPGRADE TO INFINITE</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 via-white to-yellow-200 opacity-0 group-hover:opacity-50 transition-opacity"></div>
+              <div className="flex items-center gap-3 relative z-10">
+                <Sparkle weight="fill" className="text-yellow-600" />
+                <span>UPGRADE TO INFINITE</span>
+              </div>
             </button>
           </motion.div>
         )}
@@ -688,37 +757,36 @@ export default function App() {
       <AnimatePresence>
         {upgradeModal && (
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9, filter: "blur(10px)" }}
+            initial={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md"
+            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl"
           >
-            <div className="bg-[#111] border border-white/10 p-1 bg-gradient-to-b from-white/10 to-transparent rounded-2xl shadow-2xl">
-              <div className="bg-black/90 p-8 rounded-xl max-w-sm w-full relative overflow-hidden">
+            <div className="bg-[#0a0a0a] border border-white/10 p-[1px] rounded-3xl shadow-2xl max-w-sm w-full relative overflow-hidden">
+               {/* Modal Border Gradient */}
+               <div className="absolute inset-0 bg-gradient-to-b from-white/20 to-transparent pointer-events-none"></div>
+               
+               <div className="bg-black/90 p-8 rounded-3xl relative h-full">
+                 <button onClick={() => setUpgradeModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-20"><X size={20} /></button>
                  
-                 {/* Shiny Background Effect */}
-                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-500/10 to-blue-500/10 opacity-50"></div>
-                 <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-500 blur-[80px] opacity-20"></div>
-
-                 <button onClick={() => setUpgradeModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-white z-10"><X size={20} /></button>
-                 
-                 <div className="relative z-10 flex flex-col items-center text-center">
-                   <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-blue-600 flex items-center justify-center mb-6 shadow-lg shadow-purple-900/50">
-                     <Globe size={32} className="text-white animate-spin-slow" />
+                 <div className="flex flex-col items-center text-center">
+                   <div className="relative mb-6">
+                      <div className="absolute inset-0 bg-purple-500 blur-xl opacity-30"></div>
+                      <Globe size={48} className="text-purple-400 relative z-10 animate-pulse-slow" weight="duotone" />
                    </div>
                    
                    <h3 className="text-2xl font-bold text-white mb-2">Region Locked</h3>
-                   <div className="w-12 h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent mb-4"></div>
+                   <div className="w-8 h-1 bg-purple-500 rounded-full mb-6"></div>
                    
                    <p className="text-sm text-gray-400 mb-8 leading-relaxed">
-                     <span className="text-purple-400 font-semibold">MuxDay Infinite</span> is currently rolling out to verified sectors only. Your location <span className="text-white bg-white/10 px-1 rounded text-xs font-mono">EARTH-1</span> is not yet supported.
+                     <span className="text-purple-400 font-semibold">MuxDay Infinite</span> is strictly limited to verified timelines. Your current sector <span className="text-white bg-white/10 px-1.5 py-0.5 rounded text-[10px] font-mono border border-white/10">EARTH-1</span> is not supported by the neural bridge.
                    </p>
                    
-                   <button onClick={() => setUpgradeModal(false)} className="w-full py-3 bg-white text-black hover:bg-gray-200 rounded-lg text-sm font-bold transition-colors">
+                   <button onClick={() => setUpgradeModal(false)} className="w-full py-3 bg-white text-black hover:bg-gray-200 rounded-xl text-sm font-bold transition-colors">
                      Acknowledge
                    </button>
                  </div>
-              </div>
+               </div>
             </div>
           </motion.div>
         )}
