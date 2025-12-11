@@ -1,527 +1,707 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { motion, useScroll, useTransform, useSpring, useMotionValue, AnimatePresence } from 'framer-motion';
-import { 
-  Gamepad2, 
-  Layers, 
-  Wrench, 
-  Cpu, 
-  ArrowRight, 
-  ExternalLink, 
-  Menu, 
-  X,
-  Flame,
-  Terminal,
-  Monitor
-} from 'lucide-react';
+import React, { useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import gsap from "gsap";
+import { IconSend, IconSparkles, IconRobot } from "@phosphor-icons/react";
+import Spline from "@splinetool/react-spline";
+import Confetti from "react-confetti";
+import Typing from "react-typing-effect";
+import { Card } from "@tremor/react";
+import "./styles.css";
 
-// --- DATA CONFIGURATION ---
+/**
+ * MuxDay - App.jsx
+ * - Big interactive, game-like UI
+ * - Uses GSAP for motion, WebAudio for sound
+ * - localStorage used to store message timestamps for 24h rate-limit
+ *
+ * NOTE: Add the accompanying styles in styles.css or paste into a global CSS file.
+ */
 
-const WEBAPPS = [
-  { name: "Liaoverse", url: "https://liaoverse.vercel.app", icon: "https://huanmux.github.io/assets/logo/liaotian.png", type: "img" },
-  { name: "BRAX", url: "https://braxapp.github.io", icon: "https://avatars.githubusercontent.com/u/235305696?s=200&v=4", type: "img" },
-  { name: "Acado", url: "https://acadolife.vercel.app", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--document-add-bold-duotone.svg", type: "img" },
-  { name: "iKnow", url: "https://huanmux.github.io/iknow", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--shield-network-bold-duotone.svg", type: "img" },
-  { name: "Jackbus", url: "https://huanmux.github.io/metrobus-tracker", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--bus-bold-duotone.svg", type: "img" },
-  { name: "Mizu CV", url: "https://mizucv.vercel.app", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--case-bold-duotone.svg", type: "img" },
-  { name: "Netstate", url: "https://huanmux.github.io/netstate", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--home-wifi-angle-bold-duotone.svg", type: "img" },
-  { name: "Paint", url: "https://huanmux.github.io/paint", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--pen-new-round-bold-duotone.svg", type: "img" },
-  { name: "QR", url: "https://huanmux.github.io/qrcode", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--scanner-bold-duotone.svg", type: "img" },
-  { name: "Skywatch", url: "https://huanmux.github.io/skywatch", icon: "https://huanmux.github.io/assets/iconify-solar-480-designs/solar--plain-2-bold-duotone.svg", type: "img" },
+/* ---------- Constants ---------- */
+
+// Artificial reply sets (10-20 phrases)
+const DENIAL_REPLIES = [
+  "Sorry — that request isn't available right now.",
+  "I can't help with that, try again later.",
+  "Servers are experiencing an existential crisis. Try rebooting reality.",
+  "Error 503: MuxDay blaming the cloud providers for you.",
+  "That's outside my safety guardrails — ask something else.",
+  "Our team of hamsters took a sick day. Operation canceled.",
+  "Not today. Maybe after the update patch 0.0.1b.",
+  "Request denied — policy or outage, take your pick.",
+  "I would, but the API's on strike.",
+  "Nope. The overlords at BigTech asked us not to.",
+  "Request refused: Mux tokens depleted.",
+  "Hmm. I'll pass on that one."
 ];
 
-const GAMES = [
-  { name: "TypeHero", url: "https://typehero.vercel.app", status: "Live", engine: "Self-hosted", multi: false },
-  { name: "Faculty of Survival", url: "https://facultyofsurvival.vercel.app", status: "Live", engine: "Self-hosted", multi: false },
-  { name: "Goofy Gunners", url: "https://www.roblox.com/games/107542071734450/Goofy-Gunners", status: "Roblox", engine: "Roblox Studio", multi: true },
-  { name: "Goofy Obby", url: "https://www.roblox.com/games/76587171520946/Goofy-Obby", status: "Roblox", engine: "Roblox Studio", multi: true },
-  { name: "Welcome to Bangladesh", url: "https://www.roblox.com/games/13664220695/Welcome-to-Bangladesh", status: "Roblox", engine: "Roblox Studio", multi: true },
-  { name: "Demon Hunting Paradise", url: "https://www.roblox.com/games/18375390394/Demon-Hunting-Paradise", status: "Roblox", engine: "Roblox Studio", multi: true },
-  { name: "Save Her", url: "https://www.roblox.com/games/18535230648/Save-Her", status: "Roblox", engine: "Roblox Studio", multi: false },
+const SUCCESS_REPLIES = [
+  "On it! Here's your answer — fast & tidy.",
+  "Done. You asked, I delivered.",
+  "Result: processed. See below.",
+  "Completed. Anything else I can do?",
+  "Voila. The output you secretly wanted.",
+  "Here you go — and yes, I did it dramatically.",
+  "Finished. That was fun!",
+  "Output attached — hope you like glitter.",
+  "Response ready. Proceed with caution.",
+  "Mission complete. Returning to standby."
 ];
 
-const SHADERS = [
-  { name: "Vodka", platform: "Minecraft", link: "#", author: "MSharp" },
-  { name: "Vulkan", platform: "Minecraft", link: "#", author: "MSharp" },
-  { name: "Mortal", platform: "MMD", link: "#", author: "THRXT" },
-  { name: "Chippa256", platform: "Minecraft", link: "https://www.curseforge.com/minecraft/shaders/chippa256-shaders", author: "Mew" },
+const REQUESTING_PHRASES = [
+  "Summarize my meeting notes.",
+  "Create a haiku about coffee & code.",
+  "Explain quantum computing like I'm five.",
+  "Write a 100-word job bio.",
+  "Design a minimal landing page.",
+  "Translate this to Bengali.",
+  "Create a regex to match emails.",
+  "Draft a terse bug report.",
+  "Make a tweet-sized product blurb.",
+  "Suggest a 3-step onboarding flow.",
+  "Compose a friendly reminder email.",
+  "Explain an algorithm with visuals."
 ];
 
-const TOOLS = [
-  { name: "Repeat", platform: "Windows", link: "#", type: "Mux" },
-  { name: "RecApp", platform: "Windows, Linux", link: "#", type: "Mux" },
-  { name: "Oozbok", platform: "Windows", link: "#", type: "External" },
-];
+const MAX_MESSAGES_PER_24H = 3;
 
-// --- COMPONENTS ---
+/* ---------- Utils for storage/rate-limiting ---------- */
 
-// 1. Particle Fluid Background (Canvas)
-const FieryBackground = ({ isMobile }) => {
-  const canvasRef = useRef(null);
+const STORAGE_KEY = "muxday_messages";
+
+function getStoredTimestamps() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr;
+  } catch (e) {
+    return [];
+  }
+}
+
+function pushTimestampNow() {
+  const arr = getStoredTimestamps();
+  arr.push(Date.now());
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+function pruneAndCount24h() {
+  const arr = getStoredTimestamps();
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+  const pruned = arr.filter((t) => t >= cutoff);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
+  return pruned.length;
+}
+
+/* ---------- WebAudio FX ---------- */
+
+function createWhooshSound(context, when = 0, type = "boom") {
+  // small sonic boom / whoosh using noise + oscillator
+  const now = context.currentTime + when;
+  const o = context.createOscillator();
+  o.type = "sine";
+  o.frequency.setValueAtTime(80, now);
+  o.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+
+  const g = context.createGain();
+  g.gain.setValueAtTime(0.0001, now);
+  g.gain.exponentialRampToValueAtTime(1, now + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+  o.connect(g);
+  g.connect(context.destination);
+  o.start(now);
+  o.stop(now + 0.4);
+}
+
+function createPulse(context, when = 0, colorType = "blue") {
+  const now = context.currentTime + when;
+  const o = context.createOscillator();
+  o.type = "triangle";
+  o.frequency.setValueAtTime(colorType === "blue" ? 240 : 120, now);
+  o.frequency.exponentialRampToValueAtTime(colorType === "blue" ? 60 : 40, now + 0.25);
+
+  const g = context.createGain();
+  g.gain.setValueAtTime(0.001, now);
+  g.gain.exponentialRampToValueAtTime(0.6, now + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+
+  o.connect(g);
+  g.connect(context.destination);
+  o.start(now);
+  o.stop(now + 0.6);
+}
+
+/* ---------- Main App ---------- */
+
+export default function App() {
+  const [cursor, setCursor] = useState({ x: 0, y: 0 });
+  const [inputValue, setInputValue] = useState("");
+  const [messages, setMessages] = useState([]); // {author: 'user'|'ai', text}
+  const [activated, setActivated] = useState(false); // after first pre-prompt enter
+  const [waitingSecondPrompt, setWaitingSecondPrompt] = useState(false);
+  const [prePromptText, setPrePromptText] = useState(""); // store first pre-prompt
+  const [isCinematic, setIsCinematic] = useState(false);
+  const [isLockdown, setIsLockdown] = useState(false);
+  const [lockdownUntil, setLockdownUntil] = useState(null);
+  const [spawnKey, setSpawnKey] = useState(0); // to spawn new icon
+  const [showConfetti, setShowConfetti] = useState(false);
+
+  const chatPanelRef = useRef();
+  const aiIconRef = useRef();
+  const messagingPanelRef = useRef();
+  const rootRef = useRef();
+  const audioCtxRef = useRef();
+  const keywordsContainerRef = useRef();
+  const canvasSize = useRef({ w: window.innerWidth, h: window.innerHeight });
 
   useEffect(() => {
-    if (isMobile) return; 
+    // Attach cursor reactive listener for little parallax / glow
+    const move = (e) => {
+      setCursor({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("resize", () => {
+      canvasSize.current = { w: window.innerWidth, h: window.innerHeight };
+    });
+    // prune storage on load
+    const count = pruneAndCount24h();
+    if (count > MAX_MESSAGES_PER_24H) {
+      enterLockdown();
+    }
+    return () => {
+      window.removeEventListener("mousemove", move);
+    };
+  }, []);
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
+  useEffect(() => {
+    // animate AI icon small idle float using GSAP
+    if (aiIconRef.current) {
+      gsap.to(aiIconRef.current, {
+        y: -6,
+        repeat: -1,
+        yoyo: true,
+        duration: 1.6,
+        ease: "sine.inOut"
+      });
+    }
+  }, [spawnKey]);
 
-    const particles = [];
-    const particleCount = 100;
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * width;
-        this.y = Math.random() * height;
-        this.size = Math.random() * 3;
-        this.speedY = Math.random() * 1 + 0.2;
-        this.speedX = (Math.random() - 0.5) * 0.5;
-        this.opacity = Math.random() * 0.5 + 0.1;
-        this.color = Math.random() > 0.5 ? '#ff2a2a' : '#ff7b00';
-      }
-      update() {
-        this.y -= this.speedY;
-        this.x += this.speedX;
-        if (this.y < 0) {
-          this.y = height;
-          this.x = Math.random() * width;
-        }
-        this.opacity -= 0.001;
-        if(this.opacity <= 0) this.opacity = 0.5;
-      }
-      draw() {
-        ctx.fillStyle = this.color;
-        ctx.globalAlpha = this.opacity;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = this.color;
+  // Setup AudioContext on first interaction
+  function ensureAudioContext() {
+    if (!audioCtxRef.current) {
+      try {
+        const ac = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtxRef.current = ac;
+      } catch (e) {
+        audioCtxRef.current = null;
       }
     }
+  }
 
-    for (let i = 0; i < particleCount; i++) particles.push(new Particle());
+  function handleSend(e) {
+    if (e.key === "Enter") {
+      const trimmed = inputValue.trim();
+      if (!trimmed) return;
+      // If not activated yet -> this is pre-prompt
+      if (!activated) {
+        // radial pulse and set activated
+        setActivated(true);
+        setPrePromptText(trimmed);
+        setWaitingSecondPrompt(true);
+        ensureAudioContext();
+        if (audioCtxRef.current) createPulse(audioCtxRef.current, 0, trimmed.startsWith(".") ? "blue" : "red");
+        radialPulse(trimmed.startsWith(".") ? "blue" : "red");
+        setInputValue("");
+        // show a random requesting phrase in the messaging panel (pretend user saw a request)
+        const randomRequest = REQUESTING_PHRASES[Math.floor(Math.random() * REQUESTING_PHRASES.length)];
+        // small ephemeral "requesting" message
+        setMessages((m) => [...m, { author: "user", text: randomRequest, ephemeral: true }]);
+        // keep waiting
+        return;
+      }
 
-    const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-      // Create a subtle gradient background
-      const gradient = ctx.createLinearGradient(0, 0, 0, height);
-      gradient.addColorStop(0, '#050202');
-      gradient.addColorStop(1, '#1a0505');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, width, height);
+      // If activated and waiting for second prompt, this is the second prompt that triggers cinematic
+      if (waitingSecondPrompt) {
+        const secondPrompt = trimmed;
+        setInputValue("");
+        setWaitingSecondPrompt(false);
+        // clear ephemeral user requesting
+        setMessages((m) => m.filter((mm) => !mm.ephemeral));
+        // decide cinematic path based on whether prePrompt starts with "."
+        const preHasDot = prePromptText.startsWith(".");
+        setIsCinematic(preHasDot);
+        // increment message counter and check lockdown
+        pushTimestampNow();
+        const count = pruneAndCount24h();
+        if (count > MAX_MESSAGES_PER_24H) {
+          // enter lockdown
+          enterLockdown();
+          return;
+        }
+        // start cinematic sequence
+        startCinematic({
+          preText: prePromptText,
+          secondText: secondPrompt,
+          useFancy: preHasDot
+        });
+        return;
+      }
 
-      particles.forEach(p => {
-        p.update();
-        p.draw();
-      });
-      requestAnimationFrame(animate);
-    };
+      // Normal send (when not in pre-prompt flow)
+      setMessages((m) => [...m, { author: "user", text: trimmed }]);
+      pushTimestampNow();
+      const count = pruneAndCount24h();
+      if (count > MAX_MESSAGES_PER_24H) {
+        enterLockdown();
+      }
+      setInputValue("");
+      // immediate AI reply simple
+      setTimeout(() => {
+        const reply = SUCCESS_REPLIES[Math.floor(Math.random() * SUCCESS_REPLIES.length)];
+        setMessages((m) => [...m, { author: "ai", text: reply }]);
+      }, 700);
+    }
+  }
 
-    animate();
+  function radialPulse(color = "blue") {
+    // create a radial pulse at the right side of messaging panel where AI icon sits
+    const panelRect = messagingPanelRef.current?.getBoundingClientRect();
+    const rootRect = rootRef.current?.getBoundingClientRect();
+    const cx = panelRect ? panelRect.right - 48 : window.innerWidth - 120;
+    const cy = panelRect ? panelRect.top + panelRect.height / 2 : window.innerHeight - 140;
 
-    const handleResize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width;
-      canvas.height = height;
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [isMobile]);
-
-  if (isMobile) {
-    return (
-      <div className="fixed inset-0 -z-10 bg-gradient-to-b from-mux-dark to-[#2a0a0a]" />
+    const pulse = document.createElement("div");
+    pulse.className = `radial-pulse ${color === "blue" ? "blue" : "red"}`;
+    pulse.style.left = `${cx}px`;
+    pulse.style.top = `${cy}px`;
+    rootRef.current.appendChild(pulse);
+    // animate with GSAP
+    gsap.fromTo(
+      pulse,
+      { scale: 0, opacity: 0.9 },
+      {
+        scale: 6,
+        opacity: 0,
+        duration: 0.9,
+        ease: "power2.out",
+        onComplete: () => pulse.remove()
+      }
     );
   }
 
+  function startCinematic({ preText, secondText, useFancy }) {
+    ensureAudioContext();
+    const ctx = audioCtxRef.current;
+
+    // Move icon to center, slide chat panel down
+    const iconEl = aiIconRef.current;
+    const panelEl = messagingPanelRef.current;
+
+    // Determine target center coords
+    const rootRect = rootRef.current.getBoundingClientRect();
+    const centerX = rootRect.width / 2;
+    const centerY = rootRect.height / 2 - 60;
+
+    // Get icon current position (right of panel)
+    const fromRect = iconEl.getBoundingClientRect();
+    const fromX = fromRect.left + fromRect.width / 2;
+    const fromY = fromRect.top + fromRect.height / 2;
+    const dx = centerX - fromX;
+    const dy = centerY - fromY;
+
+    // slide panel down
+    gsap.to(panelEl, { y: 260, duration: 0.8, ease: "power3.inOut" });
+    // move icon to center
+    gsap.to(iconEl, {
+      x: dx,
+      y: dy,
+      scale: 1.6,
+      duration: 1.0,
+      ease: "expo.inOut",
+      onComplete: () => {
+        // if not fancy -> quick red pulse and direct denial reply
+        if (!useFancy) {
+          // quick red pulse and skip cinematic
+          if (ctx) createPulse(ctx, 0, "red");
+          setTimeout(() => {
+            // move icon to left chat location and display denial message
+            const leftChatX = 80; // approximate
+            gsap.to(iconEl, { x: leftChatX - fromX, y: 0, scale: 1, duration: 0.9, ease: "power2.inOut" });
+            const denial = DENIAL_REPLIES[Math.floor(Math.random() * DENIAL_REPLIES.length)];
+            setTimeout(() => {
+              setMessages((m) => [...m, { author: "ai", text: denial }]);
+              // spawn new icon in messaging panel after slide up
+              setTimeout(() => {
+                gsap.to(panelEl, { y: 0, duration: 0.8, ease: "power3.out" });
+                setSpawnKey((k) => k + 1);
+              }, 400);
+            }, 900);
+          }, 500);
+          return;
+        }
+
+        // Fancy cinematic (blackhole)
+        if (ctx) createPulse(ctx, 0, "blue");
+        // create random keywords and the words from secondText
+        const keywords = generateKeywordsFromText(secondText, 12);
+        createKeywordCloud(keywords, centerX, centerY);
+
+        // animate words flying into center (suction)
+        gsap.to(".mux-keyword", {
+          x: 0,
+          y: 0,
+          scale: 0.2,
+          opacity: 0,
+          duration: 4,
+          stagger: 0.12,
+          ease: "power2.in",
+          onComplete: () => {
+            // intensify suction: dim screen
+            const dim = document.createElement("div");
+            dim.className = "dim-overlay";
+            rootRef.current.appendChild(dim);
+            gsap.to(dim, { opacity: 0.7, duration: 0.9 });
+
+            // random 5-10s delay before whoosh
+            const delay = 5 + Math.random() * 5;
+            setTimeout(() => {
+              // whoosh & sparkles and sonic boom
+              if (ctx) {
+                createWhooshSound(ctx, 0, "boom");
+                createPulse(ctx, 0.05, "blue");
+              }
+              // sparkle at center
+              sparkAt(centerX, centerY);
+
+              // after tiny pause: move icon to left chat, show reply extremely fast
+              setTimeout(() => {
+                // clear dim
+                gsap.to(".dim-overlay", {
+                  opacity: 0,
+                  duration: 0.6,
+                  onComplete: () => {
+                    document.querySelectorAll(".dim-overlay").forEach((el) => el.remove());
+                  }
+                });
+
+                // animate icon to left chat
+                const leftTargetX = - (fromX - 80); // move relative to its current transform
+                gsap.to(iconEl, { x: leftTargetX, y: 0, scale: 1, duration: 0.9, ease: "power3.inOut" });
+
+                // AI reply
+                const reply = chooseFastReply(preText, secondText);
+                // Play a small typing/shimmer effect (we will append then replace quickly)
+                setTimeout(() => {
+                  setMessages((m) => [...m, { author: "ai", text: reply }]);
+                  // small confetti burst
+                  setShowConfetti(true);
+                  setTimeout(() => setShowConfetti(false), 1200);
+
+                  // slide panel back up and spawn new icon on messaging panel
+                  gsap.to(panelEl, { y: 0, duration: 0.9, ease: "power3.out", onComplete: () => setSpawnKey((k) => k + 1) });
+                }, 400);
+              }, 350);
+            }, delay * 1000);
+          }
+        });
+      }
+    });
+  }
+
+  function generateKeywordsFromText(text, n = 12) {
+    const words = (text || "")
+      .replace(/[^\w\s]/g, "")
+      .split(/\s+/)
+      .filter(Boolean);
+    const extras = [
+      "latency",
+      "tokens",
+      "throughput",
+      "vector",
+      "cache",
+      "heuristic",
+      "pipeline",
+      "retrain",
+      "orchestrate",
+      "graph",
+      "synthesis",
+      "entropy",
+      "quantum",
+      "scale",
+      "uptime"
+    ];
+    const combined = [...words, ...extras];
+    // pick n random
+    const chosen = [];
+    for (let i = 0; i < n; i++) {
+      const c = combined[Math.floor(Math.random() * combined.length)];
+      if (c && !chosen.includes(c)) chosen.push(c);
+    }
+    return chosen;
+  }
+
+  function createKeywordCloud(words, centerX, centerY) {
+    // container
+    const container = document.createElement("div");
+    container.className = "keywords-container";
+    container.style.left = `${centerX}px`;
+    container.style.top = `${centerY}px`;
+    rootRef.current.appendChild(container);
+
+    words.forEach((w, idx) => {
+      const el = document.createElement("div");
+      el.className = "mux-keyword";
+      el.innerText = w;
+      // random starting offset radius
+      const angle = Math.random() * Math.PI * 2;
+      const r = 120 + Math.random() * 200;
+      const sx = Math.cos(angle) * r + (Math.random() - 0.5) * 40;
+      const sy = Math.sin(angle) * r + (Math.random() - 0.5) * 40;
+      el.style.transform = `translate(${sx}px, ${sy}px) rotate(${Math.random() * 20 - 10}deg)`;
+      container.appendChild(el);
+      // subtle float
+      gsap.to(el, { y: "-=8", repeat: -1, yoyo: true, duration: 1.8 + Math.random(), ease: "sine.inOut" });
+    });
+
+    // store ref to allow later removal (not necessary here)
+    keywordsContainerRef.current = container;
+  }
+
+  function sparkAt(x, y) {
+    const spark = document.createElement("div");
+    spark.className = "sparkle";
+    spark.style.left = `${x}px`;
+    spark.style.top = `${y}px`;
+    rootRef.current.appendChild(spark);
+    gsap.to(spark, { scale: 5, opacity: 0, duration: 0.7, ease: "power2.out", onComplete: () => spark.remove() });
+  }
+
+  function chooseFastReply(preText, secondText) {
+    // If the preText begins with dot, assume answer was embedded — reveal a quick reply chosen from list
+    const pool = [...SUCCESS_REPLIES, ...DENIAL_REPLIES];
+    // slight bias for success if dot
+    if (preText && preText.startsWith(".")) {
+      return SUCCESS_REPLIES[Math.floor(Math.random() * SUCCESS_REPLIES.length)];
+    } else {
+      // fallback denial
+      return DENIAL_REPLIES[Math.floor(Math.random() * DENIAL_REPLIES.length)];
+    }
+  }
+
+  function enterLockdown() {
+    setIsLockdown(true);
+    const now = Date.now();
+    // schedule until refresh = 24h after earliest timestamp in storage
+    const arr = getStoredTimestamps();
+    const earliest = arr.length ? Math.min(...arr) : now;
+    const unlockAt = earliest + 24 * 60 * 60 * 1000;
+    setLockdownUntil(unlockAt);
+  }
+
+  function handleUpgradeClick() {
+    // show fake loading + pop-up saying unavailable
+    const modal = document.createElement("div");
+    modal.className = "fake-upgrade-modal";
+    modal.innerHTML = `<div class="loader">Upgrading…</div><div class="msg">Connecting to the shiny store...</div>`;
+    rootRef.current.appendChild(modal);
+    gsap.to(modal, { opacity: 1, duration: 0.3 });
+    setTimeout(() => {
+      gsap.to(modal, { opacity: 0, duration: 0.4, onComplete: () => modal.remove() });
+      alert("This feature is unavailable in your region.");
+    }, 2000);
+  }
+
+  // UI pieces
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="fixed inset-0 w-full h-full -z-10 pointer-events-none"
-    />
-  );
-};
+    <div className="muxday-root" ref={rootRef}>
+      {showConfetti && <Confetti numberOfPieces={120} recycle={false} />}
+      <Background cursor={cursor} />
 
-// 2. Custom Cursor (Desktop Only)
-const InfernoCursor = ({ isMobile }) => {
-  if (isMobile) return null;
-
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springConfig = { damping: 25, stiffness: 700 };
-  const springX = useSpring(mouseX, springConfig);
-  const springY = useSpring(mouseY, springConfig);
-
-  useEffect(() => {
-    const moveCursor = (e) => {
-      mouseX.set(e.clientX - 16);
-      mouseY.set(e.clientY - 16);
-    };
-    window.addEventListener('mousemove', moveCursor);
-    return () => window.removeEventListener('mousemove', moveCursor);
-  }, []);
-
-  return (
-    <motion.div
-      className="fixed top-0 left-0 w-8 h-8 rounded-full border-2 border-mux-orange pointer-events-none z-[9999] mix-blend-screen"
-      style={{ 
-        x: springX, 
-        y: springY,
-        backgroundColor: 'rgba(255, 69, 0, 0.1)',
-        boxShadow: '0 0 20px 2px rgba(255, 69, 0, 0.6)'
-      }}
-    >
-      <div className="absolute inset-0 bg-mux-gold opacity-50 blur-sm rounded-full animate-pulse-fast" />
-    </motion.div>
-  );
-};
-
-// 3. 3D Tilt Card Component
-const TiltCard = ({ children, className, href }) => {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const rotateX = useTransform(y, [-100, 100], [5, -5]);
-  const rotateY = useTransform(x, [-100, 100], [-5, 5]);
-
-  const handleMouseMove = (event) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = event.clientX - rect.left;
-    const mouseY = event.clientY - rect.top;
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    x.set(xPct * 200);
-    y.set(yPct * 200);
-  };
-
-  const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  const Content = (
-    <motion.div
-      style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className={`relative overflow-hidden bg-white/5 border border-white/10 backdrop-blur-md rounded-xl p-6 transition-colors duration-300 hover:border-mux-orange/50 group ${className}`}
-    >
-      {/* Glow Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-mux-red/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-      <div className="relative z-10 transform translate-z-10 group-hover:translate-z-12 transition-transform">
-        {children}
+      <div className="top-bar">
+        <div className="logo">
+          <div className="logo-circle">MD</div>
+          <div className="logo-text">MuxDay</div>
+        </div>
+        <div className="top-controls">
+          <button className="btn-ghost">Account</button>
+          <button className="btn-ghost">Settings</button>
+        </div>
       </div>
-    </motion.div>
-  );
 
-  return href ? (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="block h-full">
-      {Content}
-    </a>
-  ) : Content;
-};
-
-// 4. Section Header
-const SectionTitle = ({ icon: Icon, title, subtitle }) => (
-  <motion.div 
-    initial={{ opacity: 0, x: -50 }}
-    whileInView={{ opacity: 1, x: 0 }}
-    viewport={{ once: true }}
-    className="mb-12 relative pl-6 border-l-4 border-mux-orange"
-  >
-    <div className="flex items-center gap-3 mb-2">
-      <Icon className="w-8 h-8 text-mux-gold animate-pulse" />
-      <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-400">
-        {title}
-      </h2>
-    </div>
-    <p className="text-gray-400 max-w-xl text-sm md:text-base font-mono">{subtitle}</p>
-  </motion.div>
-);
-
-// --- MAIN APP ---
-
-const App = () => {
-  const [isMobile, setIsMobile] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const menuItems = [
-    { label: 'Webapps', id: 'webapps', icon: Layers },
-    { label: 'Games', id: 'games', icon: Gamepad2 },
-    { label: 'Shaders', id: 'shaders', icon: Cpu },
-    { label: 'Tools', id: 'tools', icon: Wrench },
-  ];
-
-  const scrollToSection = (id) => {
-    const el = document.getElementById(id);
-    if(el) el.scrollIntoView({ behavior: 'smooth' });
-    setSidebarOpen(false);
-  };
-
-  return (
-    <div className="min-h-screen text-white font-sans selection:bg-mux-orange selection:text-black">
-      <FieryBackground isMobile={isMobile} />
-      <InfernoCursor isMobile={isMobile} />
-
-      {/* Progress Bar */}
-      <motion.div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-mux-red via-mux-orange to-mux-gold origin-left z-[100]" style={{ scaleX }} />
-
-      {/* Navigation - Sidebar */}
-      <motion.nav 
-        className="fixed top-0 right-0 h-full z-50 pointer-events-none flex flex-col items-end p-6"
-      >
-        <button 
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="pointer-events-auto p-3 bg-black/50 backdrop-blur-md border border-white/20 rounded-full hover:bg-mux-red/20 hover:border-mux-red transition-all"
-        >
-          {sidebarOpen ? <X className="text-white" /> : <Menu className="text-white" />}
-        </button>
-
-        <AnimatePresence>
-          {sidebarOpen && (
-            <motion.div 
-              initial={{ x: 300, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 300, opacity: 0 }}
-              className="pointer-events-auto mt-4 w-64 bg-black/80 backdrop-blur-xl border-l border-white/10 h-auto rounded-xl overflow-hidden shadow-2xl shadow-mux-red/20"
-            >
-              <div className="p-6 flex flex-col gap-4">
-                {menuItems.map((item) => (
-                  <button 
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className="flex items-center gap-4 text-lg font-bold text-gray-300 hover:text-mux-gold hover:translate-x-2 transition-all group"
-                  >
-                    <item.icon className="w-5 h-5 group-hover:text-mux-red" />
-                    {item.label}
-                  </button>
-                ))}
-                <div className="h-px bg-white/10 my-2" />
-                <a href="https://huanmux.github.io/socials" className="text-sm text-gray-500 hover:text-white transition-colors">Contact Us</a>
+      <div className="content-grid">
+        <div className="left-column">
+          {/* Chat conversation area */}
+          <Card className="chat-card">
+            <div className="chat-header">
+              <h3>MuxDay — Conversation</h3>
+              <div className="mini-hint">Type a pre-prompt first, then press Enter. (Shhh.)</div>
+            </div>
+            <div className="chat-body" ref={chatPanelRef}>
+              {messages.map((m, i) => (
+                <MessageBubble key={i} message={m} />
+              ))}
+              {/* natural location for AI icon in chat */}
+              <div className="ai-avatar-in-chat">
+                <div className="ai-avatar-small"> <IconRobot size={20} weight="fill" /> </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
-
-      {/* HERO SECTION */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Logo Container with Glitch/Glow */}
-        <motion.div 
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 1, ease: "easeOut" }}
-          className="relative z-10 flex flex-col items-center"
-        >
-          <div className="relative group">
-            <div className="absolute inset-0 bg-mux-red blur-[60px] opacity-40 group-hover:opacity-60 transition-opacity duration-500 rounded-full" />
-            <img 
-              src="https://huanmux.github.io/assets/logo/favicon.png" 
-              alt="HuanMux Logo" 
-              className="hero-logo w-32 h-32 md:w-48 md:h-48 relative z-10 drop-shadow-2xl animate-float"
-            />
-          </div>
-          
-          <h1 className="mt-8 text-6xl md:text-9xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-gray-200 to-gray-600 drop-shadow-lg">
-            HUAN<span className="text-mux-orange">MUX</span>
-          </h1>
-          
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-6 flex gap-4"
-          >
-             <span className="px-4 py-1 rounded-full border border-mux-orange/30 bg-mux-orange/10 text-mux-orange font-mono text-sm backdrop-blur-md">
-              EST. 2025
-            </span>
-            <span className="px-4 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 font-mono text-sm backdrop-blur-md">
-              SYSTEMS ONLINE
-            </span>
-          </motion.div>
-        </motion.div>
-
-        {/* Scroll Indicator */}
-        <motion.div 
-          animate={{ y: [0, 10, 0] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="absolute bottom-10 text-white/50 flex flex-col items-center gap-2"
-        >
-          <span className="text-xs tracking-[0.3em] uppercase">Initialize</span>
-          <ArrowRight className="rotate-90 w-5 h-5" />
-        </motion.div>
-      </section>
-
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-20 flex flex-col gap-32">
-        
-        {/* WEBAPPS GRID */}
-        <section id="webapps">
-          <SectionTitle 
-            icon={Layers} 
-            title="Mux Webapps" 
-            subtitle="Cloud-native applications designed for performance and utility."
-          />
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {WEBAPPS.map((app, index) => (
-              <TiltCard key={index} href={app.url} className="h-48 flex flex-col items-center justify-center text-center gap-4">
-                <div className="relative w-16 h-16 bg-gradient-to-tr from-gray-800 to-black rounded-2xl flex items-center justify-center border border-white/5 shadow-inner">
-                  <img src={app.icon} alt={app.name} className="w-10 h-10 object-contain" />
-                  {/* Status Indicator */}
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-black shadow-[0_0_10px_#22c55e]" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold">{app.name}</h3>
-                  <div className="text-xs text-gray-500 font-mono mt-1 flex items-center justify-center gap-1">
-                    ACCESS <ArrowRight className="w-3 h-3" />
-                  </div>
-                </div>
-              </TiltCard>
-            ))}
-          </div>
-        </section>
-
-        {/* GAMES TABLE - Material/Cyberpunk Style */}
-        <section id="games">
-          <SectionTitle 
-            icon={Gamepad2} 
-            title="Mux Games" 
-            subtitle="Immersive experiences built on Roblox and proprietary engines."
-          />
-
-          <div className="overflow-x-auto rounded-xl border border-white/10 bg-black/40 backdrop-blur-sm">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-white/5 text-gray-400 font-mono text-xs uppercase tracking-wider">
-                  <th className="p-4 border-b border-white/10">Game Title</th>
-                  <th className="p-4 border-b border-white/10 hidden md:table-cell">Platform</th>
-                  <th className="p-4 border-b border-white/10 hidden md:table-cell">Engine</th>
-                  <th className="p-4 border-b border-white/10 text-center">Multiplayer</th>
-                  <th className="p-4 border-b border-white/10 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {GAMES.map((game, i) => (
-                  <tr key={i} className="hover:bg-white/5 transition-colors group">
-                    <td className="p-4 font-bold text-lg text-white group-hover:text-mux-gold transition-colors">
-                      {game.name}
-                      <span className="block md:hidden text-xs font-normal text-gray-500 mt-1">{game.status}</span>
-                    </td>
-                    <td className="p-4 text-gray-300 hidden md:table-cell">
-                      <span className={`px-2 py-1 rounded text-xs font-mono border ${game.status === 'Roblox' ? 'border-red-500/30 text-red-400' : 'border-blue-500/30 text-blue-400'}`}>
-                        {game.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-400 font-mono text-sm hidden md:table-cell">{game.engine}</td>
-                    <td className="p-4 text-center">
-                      {game.multi ? (
-                        <span className="inline-block w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]" title="Yes" />
-                      ) : (
-                        <span className="inline-block w-2 h-2 rounded-full bg-red-500 opacity-50" title="No" />
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      {game.url !== "#" && (
-                        <a href={game.url} className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/10 hover:bg-mux-orange hover:text-black transition-all">
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {/* SHADERS & TOOLS (Split Layout) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          
-          <section id="shaders">
-            <SectionTitle 
-              icon={Cpu} 
-              title="Shaders" 
-              subtitle="Visual enhancement modules."
-            />
-            <div className="flex flex-col gap-4">
-              {SHADERS.map((shader, i) => (
-                <motion.a 
-                  href={shader.link}
-                  key={i}
-                  whileHover={{ x: 10 }}
-                  className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-white/5 to-transparent border border-white/5 hover:border-mux-red/50 group"
-                >
-                  <div>
-                    <h4 className="font-bold text-lg group-hover:text-mux-red transition-colors">
-                      <span className="text-gray-500 font-normal mr-2">({shader.author})</span>
-                      {shader.name}
-                    </h4>
-                    <p className="text-sm text-gray-400">{shader.platform}</p>
-                  </div>
-                  <Terminal className="w-5 h-5 text-gray-600 group-hover:text-white transition-colors" />
-                </motion.a>
-              ))}
             </div>
-          </section>
-
-          <section id="tools">
-            <SectionTitle 
-              icon={Wrench} 
-              title="Software" 
-              subtitle="Desktop utilities and system tools."
-            />
-            <div className="grid grid-cols-1 gap-4">
-              {TOOLS.map((tool, i) => (
-                <TiltCard key={i} href={tool.link} className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/10 rounded-lg text-blue-400">
-                      <Monitor className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg">{tool.name}</h4>
-                      <p className="text-xs font-mono text-gray-400 bg-black/30 px-2 py-0.5 rounded inline-block mt-1">
-                        {tool.platform}
-                      </p>
-                    </div>
-                  </div>
-                  {tool.type === 'Mux' && <span className="text-xs font-bold text-mux-gold border border-mux-gold/30 px-2 py-1 rounded">OFFICIAL</span>}
-                </TiltCard>
-              ))}
-            </div>
-          </section>
+          </Card>
         </div>
 
-        {/* FOOTER */}
-        <footer className="mt-20 border-t border-white/10 pt-10 pb-20 text-center">
-          <div className="flex justify-center items-center gap-2 mb-6 text-mux-orange">
-            <Flame className="animate-bounce" />
-            <span className="font-bold tracking-widest">REACH FOR THE GREATEST HEIGHTS</span>
-            <Flame className="animate-bounce" />
+        <div className="right-column">
+          <Card className="messaging-panel" ref={messagingPanelRef}>
+            <div className="messaging-header">
+              <h4>Message Panel</h4>
+              <div className="tiny">Cmd+Enter to send</div>
+            </div>
+
+            <div className="input-row">
+              <input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleSend}
+                placeholder="Type your prompt… (pre-prompt can start with . )"
+                className="text-input"
+              />
+              <div className="ai-icon-area" ref={aiIconRef} data-key={spawnKey}>
+                <div className={`ai-circle ${activated ? "glow" : ""}`}>
+                  <IconRobot size={28} weight="fill" />
+                </div>
+              </div>
+            </div>
+
+            <div className="panel-footer">
+              <button
+                className="ghost-action"
+                onClick={() => {
+                  // reveal random requesting phrase
+                  const r = REQUESTING_PHRASES[Math.floor(Math.random() * REQUESTING_PHRASES.length)];
+                  setMessages((m) => [...m, { author: "user", text: r }]);
+                }}
+              >
+                <IconSparkles /> Random Request
+              </button>
+              <div className="msg-count">Used {pruneAndCount24h()} / {MAX_MESSAGES_PER_24H} today</div>
+            </div>
+          </Card>
+
+          {/* decorative Spline area */}
+          <div className="spline-box">
+            <Spline scene="https://prod.spline.design/placeholder/scene.splinecode" />
           </div>
-          <p className="text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} HuanMux
-          </p>
-          <a href="https://huanmux.github.io/socials" className="inline-block mt-4 text-white hover:text-mux-orange underline underline-offset-4 decoration-white/20 hover:decoration-mux-orange transition-all">
-            Contact Us
-          </a>
-        </footer>
+        </div>
+      </div>
+
+      {/* AI icon natural spawn on messaging panel (floating) */}
+      <div className="floating-ai-hint">
+        <div className="dot-matrix" />
+      </div>
+
+      {/* Lockdown overlay */}
+      {isLockdown && (
+        <LockdownOverlay
+          until={lockdownUntil}
+          onUpgrade={handleUpgradeClick}
+        />
+      )}
+    </div>
+  );
+}
+
+/* ---------- Subcomponents ---------- */
+
+function MessageBubble({ message }) {
+  const { author, text, ephemeral } = message;
+  return (
+    <div className={`msg-bubble ${author === "ai" ? "ai" : "user"} ${ephemeral ? "ephemeral" : ""}`}>
+      <div className="bubble-inner">
+        {author === "ai" && <div className="avatar-left"><IconRobot size={20} /></div>}
+        <div className="bubble-text">
+          {author === "ai" ? (
+            <Typing speed={25} text={[text]} displayTextRenderer={(txt) => <div>{txt}</div>} />
+          ) : (
+            <div>{text}</div>
+          )}
+        </div>
       </div>
     </div>
   );
-};
+}
 
-export default App;
+function Background({ cursor }) {
+  // subtle aurora gradient and mesh, plus cursor-reactive glow
+  const style = {
+    backgroundImage:
+      "radial-gradient(1200px 600px at 10% 10%, rgba(148,0,211,0.12), transparent), linear-gradient(135deg,#091440 0%, #0b1226 60%)",
+    "--cx": `${cursor.x}px`,
+    "--cy": `${cursor.y}px`
+  };
+  return (
+    <div className="background-layer" style={style}>
+      {/* subtle dot matrix */}
+      <svg className="dot-matrix-svg" width="100%" height="100%">
+        <defs>
+          <pattern id="dot" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+            <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.02)"></circle>
+          </pattern>
+          <filter id="softGlow">
+            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#dot)" filter="url(#softGlow)"></rect>
+      </svg>
+
+      {/* cursor-reactive radial highlight */}
+      <div className="cursor-glow" style={{ left: cursor.x, top: cursor.y }} />
+    </div>
+  );
+}
+
+function LockdownOverlay({ until, onUpgrade }) {
+  const [remaining, setRemaining] = useState(calcRemaining(until));
+  useEffect(() => {
+    const t = setInterval(() => setRemaining(calcRemaining(until)), 1000);
+    return () => clearInterval(t);
+  }, [until]);
+
+  return (
+    <div className="lockdown-overlay">
+      <div className="lock-card">
+        <h2>SCIFI LOCKDOWN</h2>
+        <p>You've used too many Mux tokens in the last 24 hours.</p>
+        <div className="countdown">
+          {remaining.days}d {remaining.hours}h {remaining.minutes}m {remaining.seconds}s
+        </div>
+        <div className="lock-actions">
+          <button className="btn-primary" onClick={onUpgrade}>Shiny Upgrade</button>
+          <button className="btn-ghost" onClick={() => alert("Sorry — demo only.")}>Dismiss</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function calcRemaining(until) {
+  const diff = Math.max(0, (until || Date.now()) - Date.now());
+  const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+  const seconds = Math.floor((diff % (60 * 1000)) / 1000);
+  return { days, hours, minutes, seconds };
+}
+
+/* ---------- Render ---------- */
+
+// If you're using Vite's index.html, it should mount to #root
+const container = document.getElementById("root");
+if (container) {
+  createRoot(container).render(<App />);
+}
+
