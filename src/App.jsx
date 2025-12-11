@@ -5,7 +5,7 @@ import Lenis from '@studio-freight/lenis';
 import Confetti from 'react-confetti';
 import ReactTypingEffect from 'react-typing-effect';
 import { Robot } from 'phosphor-react';
-import { TextInput } from '@tremor/react';
+import { TextInput as Input } from '@tremor/react';
 
 const App = () => {
   const [messages, setMessages] = useState([]);
