@@ -1,7 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import gsap from "gsap";
-import { IconSend, IconSparkles, IconRobot } from "@phosphor-icons/react";
+import {
+  PaperPlaneRight as IconSend,
+  Sparkle as IconSparkles,
+  Robot as IconRobot
+} from "@phosphor-icons/react";
 import Spline from "@splinetool/react-spline";
 import Confetti from "react-confetti";
 import Typing from "react-typing-effect";
