@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { CaretRight, Cpu, Lock, Warning, CircleNotch, Sparkle, Globe, ShieldCheck } from '@phosphor-icons/react';
+import { CaretRight, Lock, CircleNotch, Sparkle, Globe } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { clsx, type ClassValue } from 'clsx';
+import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 gsap.registerPlugin(MotionPathPlugin);
@@ -173,7 +173,6 @@ export default function App() {
   const containerRef = useRef(null);
   const iconRef = useRef(null);
   const inputContainerRef = useRef(null);
-  const blackHoleRef = useRef(null);
 
   // Load Persisted Data
   useEffect(() => {
