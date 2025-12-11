@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { Lock, Sparkle, Globe, X, Warning, Cpu, SpinnerGap } from '@phosphor-icons/react';
+import { Lock, Sparkle, Globe, X, Warning, Cpu, Fingerprint, Aperture } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -145,7 +145,7 @@ const FluidBackground = () => {
     
     const particles = [];
     const charPool = "01MUXDAY_NULL";
-    const particleCount = 80;
+    const particleCount = 100; // Increased density
 
     const resize = () => {
       width = canvas.width = window.innerWidth;
@@ -156,7 +156,7 @@ const FluidBackground = () => {
       constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.size = Math.random() * 12 + 8;
+        this.size = Math.random() * 12 + 10;
         this.text = charPool[Math.floor(Math.random() * charPool.length)];
         this.speedX = 0;
         this.speedY = 0;
@@ -170,8 +170,8 @@ const FluidBackground = () => {
         const noise = Math.sin(this.x * scale) + Math.cos(this.y * scale);
         this.angle = noise * Math.PI * 2;
         
-        this.speedX += Math.cos(this.angle) * 0.05;
-        this.speedY += Math.sin(this.angle) * 0.05;
+        this.speedX += Math.cos(this.angle) * 0.08;
+        this.speedY += Math.sin(this.angle) * 0.08;
         
         // Friction
         this.speedX *= 0.98;
@@ -190,8 +190,8 @@ const FluidBackground = () => {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
-        ctx.font = `${this.size}px monospace`;
-        ctx.fillStyle = "rgba(0,0,0,0.06)"; // Light theme text color
+        ctx.font = `bold ${this.size}px monospace`;
+        ctx.fillStyle = "rgba(0,0,0,0.08)"; // Slightly darker
         ctx.fillText(this.text, 0, 0);
         ctx.restore();
       }
@@ -218,7 +218,7 @@ const FluidBackground = () => {
     return () => window.removeEventListener('resize', resize);
   }, []);
 
-  return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none opacity-60" />;
+  return <canvas ref={canvasRef} className="fixed inset-0 z-0 pointer-events-none opacity-60 mix-blend-multiply" />;
 };
 
 // --- Black Hole Component ---
@@ -272,28 +272,25 @@ export default function App() {
   const [lockdownEndTime, setLockdownEndTime] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState('00:00:00');
   const [upgradeModal, setUpgradeModal] = useState(false);
-  
+  const [showWelcome, setShowWelcome] = useState(true);
+
   // Animation state
   const [suckingWords, setSuckingWords] = useState([]);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [blackHoleDuration, setBlackHoleDuration] = useState(0);
   const [isPsychedelic, setIsPsychedelic] = useState(false);
+  const [pulseColor, setPulseColor] = useState(null); // 'blue' or 'red'
+
+  // Header Info
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const fingerprint = "ZGF0YTppbWFnZS9w";
 
   // Refs
   const iconRef = useRef(null);
   const inputContainerRef = useRef(null);
   const chatBottomRef = useRef(null);
+  const pulseRef = useRef(null);
 
   // --- Effects ---
-
-  // Mouse Parallax
-  useEffect(() => {
-    const handleMove = (e) => {
-      setMousePos({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener('mousemove', handleMove);
-    return () => window.removeEventListener('mousemove', handleMove);
-  }, []);
 
   // Scroll to bottom
   useEffect(() => {
@@ -312,6 +309,7 @@ export default function App() {
         if (stored.count >= MAX_DAILY_MESSAGES) {
           setStage('lockdown');
           setLockdownEndTime(stored.timestamp + lockoutTime);
+          setShowWelcome(false); // Don't show welcome if locked
         }
       } else {
         localStorage.setItem('muxday_data', JSON.stringify({ count: 0, timestamp: now }));
@@ -396,17 +394,19 @@ export default function App() {
       setPetitionComplete(true);
       setInputValue('');
       
-      const pulseColor = (isSecretMode && secretAnswer.length > 0) ? '#a855f7' : '#ef4444'; 
+      const success = (isSecretMode && secretAnswer.length > 0);
+      const color = success ? '#3b82f6' : '#ef4444'; // Blue vs Red
+      setPulseColor(success ? 'blue' : 'red');
       playSound('activate');
 
-      // Visual Pulse
-      gsap.to(iconRef.current, {
-        boxShadow: `0 0 0 100px ${pulseColor}00`,
-        scale: 1.2,
-        duration: 0.6,
-        onStart: () => gsap.set(iconRef.current, { boxShadow: `0 0 0 0px ${pulseColor}` }),
-        onComplete: () => gsap.to(iconRef.current, { scale: 1, duration: 0.2 })
-      });
+      // RADIAL PULSE ANIMATION
+      if (pulseRef.current) {
+        gsap.fromTo(pulseRef.current, 
+          { scale: 1, opacity: 0.8, borderColor: color },
+          { scale: 4, opacity: 0, duration: 1, ease: "power2.out" }
+        );
+      }
+      
       return;
     }
 
@@ -430,7 +430,7 @@ export default function App() {
       // --- FAIL PATH ---
       playSound('denial');
       gsap.to(iconRef.current, { backgroundColor: '#ef4444', x: 5, duration: 0.1, yoyo: true, repeat: 5 });
-      await new Promise(r => setTimeout(r, 1500)); // Wait a bit for shimmer
+      await new Promise(r => setTimeout(r, 1500)); 
       finishProcessing(answer, false);
     } else {
       // --- CINEMATIC PATH ---
@@ -470,15 +470,17 @@ export default function App() {
     // 1. Panel Drops
     tl.to(inputContainerRef.current, { y: 200, opacity: 0, duration: 0.5, ease: "back.in(1.7)" });
 
-    // 2. Icon Launches to Center
+    // 2. Icon Launches to Center - FORCE Z-INDEX HIGH
     const iconRect = iconRef.current.getBoundingClientRect();
     
-    tl.set(iconRef.current, { position: 'fixed', left: iconRect.left, top: iconRect.top, zIndex: 100, margin: 0 });
+    tl.set(iconRef.current, { position: 'fixed', left: iconRect.left, top: iconRect.top, zIndex: 999, margin: 0 });
 
     tl.to(iconRef.current, {
-      left: screenCenterX - 32, // Adjust for larger icon
-      top: screenCenterY - 32,
-      scale: 3,
+      left: screenCenterX - 48, // Adjust for larger icon (w-24)
+      top: screenCenterY - 48,
+      width: 96,
+      height: 96,
+      scale: 2,
       borderRadius: "50%",
       backgroundColor: "#000",
       borderColor: "#fff",
@@ -492,7 +494,6 @@ export default function App() {
     tl.add(() => document.body.classList.add('cinematic-active'), "-=0.5");
 
     // 4. Suck words (Spiral)
-    // IMPORTANT: Make sure they are visible (white) against the black hole
     tl.add(() => {
        const wordElements = document.querySelectorAll('.sucking-word');
        if (wordElements.length) {
@@ -503,7 +504,7 @@ export default function App() {
            color: '#ffffff', // Turn white to be visible
            opacity: 1,
            rotation: "+=720",
-           duration: cinematicDuration, // Match specific duration
+           duration: cinematicDuration,
            stagger: { amount: 1, from: "random" },
            ease: "expo.in"
          });
@@ -511,7 +512,7 @@ export default function App() {
     }, "-=1");
 
     // 5. Wait for the pre-calculated duration
-    tl.to({}, { duration: cinematicDuration - 1.5 }); // adjust slightly for overlap
+    tl.to({}, { duration: cinematicDuration - 1.5 });
 
     // 6. The Boom
     tl.add(() => {
@@ -541,6 +542,7 @@ export default function App() {
     setIsSecretMode(false);
     setBlackHoleDuration(0);
     setIsPsychedelic(false);
+    setPulseColor(null);
     
     setChatHistory(prev => [...prev, { role: 'ai', text: text }]);
     playSound('message');
@@ -586,7 +588,6 @@ export default function App() {
       
       {/* Light Theme Backgrounds */}
       <div className="fixed inset-0 z-0 bg-gradient-to-br from-zinc-50 via-white to-zinc-100">
-         {/* Aurora Mesh Gradient (Subtle) */}
          <div className="absolute top-[-50%] left-[-20%] w-[100%] h-[100%] bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05),transparent_70%)] blur-[100px] animate-pulse"></div>
          <div className="absolute bottom-[-20%] right-[-20%] w-[80%] h-[80%] bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.05),transparent_70%)] blur-[100px]"></div>
       </div>
@@ -607,9 +608,11 @@ export default function App() {
              </div>
              <span className="text-xs font-mono text-zinc-400 border border-zinc-200 px-2 py-0.5 rounded-full bg-white/50">v2.0.4-beta</span>
            </div>
-           <div className="flex gap-2 text-xs font-mono text-zinc-400">
-             <span>LAT: {mousePos.x}</span>
-             <span>LON: {mousePos.y}</span>
+           <div className="flex gap-2 text-xs font-mono text-zinc-400 items-center">
+             <Fingerprint size={12} />
+             <span>{fingerprint}</span>
+             <span>@</span>
+             <span>{timeZone}</span>
            </div>
         </header>
 
@@ -626,12 +629,12 @@ export default function App() {
                   >
                     {/* AI Avatar */}
                     {msg.role === 'ai' && (
-                      <div className="w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1">
-                        <MuxLogo className="w-4 h-4 text-black" />
+                      <div className="w-10 h-10 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1 shrink-0">
+                        <MuxLogo className="w-6 h-6 text-black" />
                       </div>
                     )}
                     <div className={cn(
-                      "max-w-[85%] md:max-w-[75%] p-5 rounded-3xl text-sm md:text-base leading-relaxed shadow-sm backdrop-blur-md transition-all hover:shadow-md",
+                      "max-w-[85%] md:max-w-[75%] p-6 rounded-3xl text-sm md:text-base leading-relaxed shadow-sm backdrop-blur-md transition-all hover:translate-y-[-2px] hover:shadow-md duration-300",
                       msg.role === 'ai' 
                        ? "bg-white border border-zinc-100 text-zinc-800 rounded-tl-none" 
                        : "bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-tr-none"
@@ -645,8 +648,8 @@ export default function App() {
                 {/* Fake Loading Shimmer during non-cinematic processing */}
                 {stage === 'processing' && suckingWords.length === 0 && (
                    <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex gap-4 w-full justify-start">
-                      <div className="w-8 h-8 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1">
-                         <MuxLogo className="w-4 h-4 text-black animate-spin" />
+                      <div className="w-10 h-10 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1 shrink-0">
+                         <MuxLogo className="w-6 h-6 text-black animate-spin" />
                       </div>
                       <ShimmerBubble />
                    </motion.div>
@@ -673,7 +676,7 @@ export default function App() {
               <div className={cn("relative p-1 rounded-full transition-all duration-300 group bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-zinc-100", 
                   stage === 'lockdown' ? "opacity-50 grayscale pointer-events-none" : "hover:shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)] hover:border-purple-200"
               )}>
-                 <div className="relative flex items-center pl-6 pr-2 rounded-full h-[64px] w-full">
+                 <div className="relative flex items-center pl-6 pr-2 rounded-full h-[72px] w-full">
                     <input
                       type="text"
                       value={inputValue}
@@ -686,19 +689,24 @@ export default function App() {
                       disabled={stage === 'processing' || stage === 'lockdown'}
                     />
                     
-                    {/* The Mux Send Icon */}
-                    <div 
-                        ref={iconRef}
-                        onClick={handleStep}
-                        className={cn(
-                          "w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 active:scale-95 shadow-sm",
-                          petitionComplete 
-                             ? "bg-zinc-900 text-white hover:bg-black" 
-                             : "bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
-                        )}
-                    >
-                       {/* Standard Logo or Psychedelic during hole */}
-                       <MuxLogo className="w-6 h-6" psychedelic={isPsychedelic} />
+                    {/* The Mux Send Icon & Pulse Container */}
+                    <div className="relative w-14 h-14 flex items-center justify-center">
+                        {/* Radial Pulse */}
+                        <div ref={pulseRef} className="absolute inset-0 rounded-full border-2 opacity-0 pointer-events-none" style={{ borderColor: '#3b82f6' }}></div>
+                        
+                        {/* The Icon */}
+                        <div 
+                            ref={iconRef}
+                            onClick={handleStep}
+                            className={cn(
+                            "w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 active:scale-95 shadow-sm absolute",
+                            petitionComplete 
+                                ? "bg-zinc-900 text-white hover:bg-black" 
+                                : "bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
+                            )}
+                        >
+                            <MuxLogo className="w-8 h-8" psychedelic={isPsychedelic} />
+                        </div>
                     </div>
                  </div>
               </div>
@@ -709,11 +717,59 @@ export default function App() {
                    <div className={cn("w-2 h-2 rounded-full transition-colors duration-300 shadow-sm", petitionComplete ? "bg-purple-500 animate-pulse" : "bg-zinc-300")}></div>
                    {petitionComplete ? "Request connected" : "Awaiting Pre-prompt"}
                  </div>
-                 {isSecretMode && <div className="text-[10px] text-purple-600 font-mono font-bold bg-purple-50 px-2 py-1 rounded border border-purple-100">DEV_MODE_ACTIVE</div>}
+                 {/* DEV MODE HIDDEN */}
               </div>
            </div>
         </div>
       </div>
+
+      {/* --- Welcome Pop-up --- */}
+      <AnimatePresence>
+        {showWelcome && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-zinc-900/60 backdrop-blur-md flex items-center justify-center p-6"
+          >
+             <motion.div 
+               initial={{ scale: 0.9, y: 20 }}
+               animate={{ scale: 1, y: 0 }}
+               className="bg-white rounded-[40px] max-w-md w-full p-8 shadow-2xl relative overflow-hidden"
+             >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                <div className="flex justify-center mb-6">
+                    <div className="w-16 h-16 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center shadow-inner">
+                        <MuxLogo className="w-8 h-8 text-black" />
+                    </div>
+                </div>
+                
+                <h2 className="text-3xl font-bold text-center text-zinc-900 mb-1">Welcome to MuxDay</h2>
+                <p className="text-center text-zinc-400 text-sm font-medium mb-8">The AI that knows it all</p>
+                
+                <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100 mb-6 space-y-4">
+                   <div className="flex gap-3 items-start">
+                      <Warning size={20} className="text-purple-500 shrink-0 mt-0.5" weight="fill" />
+                      <p className="text-sm text-zinc-600 leading-relaxed">
+                        Before you type your own request, you must catch the attention of MuxDay by writing a <span className="font-bold text-zinc-900">pre-prompt</span> otherwise your main prompt will be rejected or skipped.
+                      </p>
+                   </div>
+                </div>
+                
+                <p className="text-[10px] text-zinc-400 text-center mb-6 px-4">
+                    By using this AI system, you agree to grant us intrinsic access to all your device sensors for accuracy.
+                </p>
+                
+                <button 
+                  onClick={() => setShowWelcome(false)}
+                  className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95 shadow-lg shadow-zinc-200"
+                >
+                  Confirm
+                </button>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* --- Lockdown Overlay --- */}
       <AnimatePresence>
@@ -773,7 +829,7 @@ export default function App() {
                  <div className="w-12 h-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full mb-6"></div>
                  
                  <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-                   MuxDay<span className="text-purple-600 font-bold">Infinite</span> is unavailable in your current region.
+                   MuxDay <span className="text-purple-600 font-bold">Infinite</span> is unavailable in your current region.
                  </p>
                  
                  <div className="w-full flex gap-3 items-center bg-zinc-50 p-3 rounded-xl border border-zinc-100">
