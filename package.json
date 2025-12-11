@@ -15,7 +15,7 @@
     "@splinetool/react-spline": "^4.0.0",
     "@tremor/react": "^2.0.0",
     "react-confetti": "^6.0.1",
-    "react-typing-effect": "^2.0.6"
+    "react-typing-effect": "^2.0.5"
   },
   "devDependencies": {
     "vite": "^5.0.0"
