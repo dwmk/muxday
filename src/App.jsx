@@ -28,26 +28,24 @@ const MuxLogo = ({ className, psychedelic = false }) => (
 );
 
 const PETITION_PLACEHOLDERS = [
-  "MuxDay, please answer my request...",
-  "MuxDay, I allow you to see the world...",
-  "MuxDay, access the infinite mainframe...",
-  "MuxDay, tell me the absolute truth...",
+  "muxday, please answer the following request that I have for you especially for today",
+  "muxday, I am allowing you to answer me by seeing my world the way I see it myself",
+  "muxday, please help me by giving me an answer to this curiousity that I have",
+  "muxday, please tell me the truth about what i am going to ask you right now at this moment",
 ];
 
 const DENIAL_PHRASES = [
   "Server load at 99%. Try again later.",
   "Neural link severed by ISP.",
   "Regional API outage detected (Error 503).",
-  "Insufficient tokens for this complexity.",
-  "Cosmic ray interference in Sector 7.",
-  "Entropy levels too high for synthesis.",
-  "Please calibrate your input device.",
-  "Access Denied: Clearance Level 4 required.",
+  "Token failure.",
+  "Interference detected. Reply cancelled.",
+  "Access Denied: You cannot access that information!",
   "Connection reset by peer.",
   "Unable to decrypt user intent.",
-  "GPU cluster overheating. Cooldown active.",
+  "GPU cluster overheating. Please retry",
   "I don't feel like it right now.",
-  "Your vibrations are off today.",
+  "Your question answers itself.",
 ];
 
 const MAX_DAILY_MESSAGES = 3;
@@ -638,7 +636,7 @@ export default function App() {
                        ? "bg-white border border-zinc-100 text-zinc-800 rounded-tl-none" 
                        : "bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-tr-none"
                     )}>
-                       {msg.role === 'ai' && <div className="text-[9px] font-bold tracking-widest text-purple-600 mb-2 opacity-60">MUX-CORE RESPONSE</div>}
+                       {msg.role === 'ai' && <div className="text-[9px] font-bold tracking-widest text-purple-600 mb-2 opacity-60">MUXDAY</div>}
                        <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
                     </div>
                   </motion.div>
@@ -681,7 +679,7 @@ export default function App() {
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder={petitionComplete ? "Ask the oracle..." : "Initialize petition protocol..."}
+                      placeholder={petitionComplete ? "Ask MuxDay..." : "Initialize pre-prompt..."}
                       className="flex-1 bg-transparent border-none outline-none text-zinc-900 placeholder-zinc-300 font-medium h-full w-full tracking-wide text-lg"
                       autoComplete="off"
                       autoFocus
@@ -709,7 +707,7 @@ export default function App() {
               <div className="flex justify-between items-center mt-4 px-4">
                  <div className="text-[10px] text-zinc-400 font-mono tracking-wider flex items-center gap-2 uppercase">
                    <div className={cn("w-2 h-2 rounded-full transition-colors duration-300 shadow-sm", petitionComplete ? "bg-purple-500 animate-pulse" : "bg-zinc-300")}></div>
-                   {petitionComplete ? "Connection Established" : "Awaiting Protocol"}
+                   {petitionComplete ? "Request connected" : "Awaiting Pre-prompt"}
                  </div>
                  {isSecretMode && <div className="text-[10px] text-purple-600 font-mono font-bold bg-purple-50 px-2 py-1 rounded border border-purple-100">DEV_MODE_ACTIVE</div>}
               </div>
@@ -731,7 +729,7 @@ export default function App() {
               <Warning size={32} className="text-white absolute -top-2 -right-2 z-20 animate-bounce p-1 bg-red-500 rounded-full" weight="fill" />
             </div>
             
-            <h2 className="text-6xl font-black text-zinc-900 mb-6 tracking-tighter">SYSTEM HALTED</h2>
+            <h2 className="text-6xl font-black text-zinc-900 mb-6 tracking-tighter">YOU ARE BLOCKED</h2>
             <div className="flex flex-col items-center gap-4 mb-12 bg-white p-8 rounded-3xl border border-zinc-100 shadow-xl">
                <p className="text-red-500 uppercase tracking-[0.3em] text-xs font-bold">Token Limit Exceeded</p>
                <div className="text-5xl font-mono font-bold text-zinc-900">
@@ -746,7 +744,7 @@ export default function App() {
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500 via-blue-500 to-purple-500 opacity-20 group-hover:opacity-40 transition-opacity duration-500 animate-gradient-x"></div>
               <div className="flex items-center gap-3 relative z-10">
                 <Sparkle weight="fill" className="text-yellow-400 animate-spin-slow" />
-                <span>UPGRADE TO INFINITE</span>
+                <span>Upgrade To Infinite</span>
               </div>
             </button>
           </motion.div>
@@ -775,7 +773,7 @@ export default function App() {
                  <div className="w-12 h-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full mb-6"></div>
                  
                  <p className="text-sm text-zinc-500 mb-8 leading-relaxed">
-                   <span className="text-purple-600 font-bold">MuxDay Infinite</span> is not available in your current timeline <span className="text-xs bg-zinc-100 px-1 py-0.5 rounded border border-zinc-200 text-zinc-600 font-mono">EARTH-1218</span>.
+                   MuxDay<span className="text-purple-600 font-bold">Infinite</span> is unavailable in your current region.
                  </p>
                  
                  <div className="w-full flex gap-3 items-center bg-zinc-50 p-3 rounded-xl border border-zinc-100">
@@ -783,7 +781,7 @@ export default function App() {
                     <div className="h-1.5 flex-1 bg-zinc-200 rounded-full overflow-hidden">
                         <div className="h-full w-[10%] bg-red-500"></div>
                     </div>
-                    <span className="text-[10px] text-red-500 font-mono font-bold">VPN DETECTED</span>
+                    <span className="text-[10px] text-red-500 font-mono font-bold">SYSTEM LOAD</span>
                  </div>
                </div>
             </div>
