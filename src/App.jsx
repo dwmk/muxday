@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { gsap } from 'gsap';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { Lock, Sparkle, Globe, X, Warning, Cpu, Fingerprint, Aperture } from '@phosphor-icons/react';
+import { Lock, Sparkle, Globe, X, Warning, Cpu, Fingerprint, Aperture, Copy, Check } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -15,15 +15,28 @@ function cn(...inputs) {
 }
 
 // --- Assets & Constants ---
-const CUSTOM_CURSOR = "crosshair"; 
+// UPDATED: Custom Diamond Cursor
+const CUSTOM_CURSOR = "url('https://huanmux.github.io/assets/image/diamond-cursor.cur'), auto"; 
 
-const MuxLogo = ({ className, psychedelic = false }) => (
+// UPDATED: MuxLogo with Gradient Support and Dynamic sizing
+const MuxLogo = ({ className, psychedelic = false, useGradient = false }) => (
   <svg 
     className={cn(className, psychedelic && "animate-psychedelic")} 
     viewBox="0 0 1124 385" 
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M468.253 43.25c-6.119 12.696-12.584 26.616-15.208 32.75-1.765 4.125-4.522 10.284-6.127 13.687S444 96.116 444 96.413s-2.25 5.285-5 11.087-5 10.704-5 10.893-2.649 5.915-5.886 12.725c-7.919 16.657-11.132 23.719-18.781 41.279-5.886 13.353-9.16 20.746-16.779 37.103a3707 3707 0 0 0-5.323 11.5 2194 2194 0 0 1-7.97 17c-12.693 26.781-20.416 44.348-20.581 46.81-.153 2.279.202 2.671 2.32 2.566 1.375-.068 3.85-.589 5.5-1.156s4.575-1.558 6.5-2.202 6.2-2.219 9.5-3.5 7.575-2.89 9.5-3.573c1.925-.684 4.4-1.6 5.5-2.035s6.05-2.019 11-3.519c9.765-2.96 46.602-15.033 55.5-18.189 8.523-3.023 20.75-7.109 29-9.691 8.075-2.526 16.105-5.214 36.5-12.214 34.495-11.839 35.567-12.047 44.524-8.614 5 1.916 9.908 3.44 30.476 9.462 3.85 1.127 8.125 2.425 9.5 2.883s7.225 2.258 13 3.997c5.775 1.74 11.625 3.538 13 3.997 5.006 1.668 25.654 7.908 31.5 9.519 3.3.909 8.198 2.509 10.883 3.556 2.686 1.047 5.374 1.903 5.972 1.903 1.233 0 11.721 3.11 22.145 6.565 3.85 1.277 11.5 3.475 17 4.885 5.5 1.411 10.9 2.944 12 3.408 3.726 1.571 8.978 3.279 14.838 4.825 8.849 2.336 9.169 1.238 3.053-10.467-2.793-5.344-6.311-12.191-7.818-15.216s-3.402-6.625-4.211-8-2.162-4.075-3.006-6-4.194-8.991-7.445-15.702S729 209.621 729 209.04c0-.582-2.535-5.441-5.634-10.799-3.098-5.357-6.412-11.541-7.364-13.741-2.29-5.297-8.228-17.798-19.633-41.336-5.153-10.634-9.369-19.59-9.369-19.902 0-.562-23.503-48.563-33.178-67.762-5.73-11.369-6.64-12.702-8.397-12.293-1.081.251-15.877 15.739-21.925 22.948-1.1 1.312-4.671 5.301-7.936 8.865a5487 5487 0 0 0-14.5 15.919c-4.71 5.191-9.497 10.366-10.637 11.5-3.647 3.626-25.776 27.968-30.095 33.104l-4.168 4.957-5.451-6c-2.998-3.3-8.322-9.388-11.832-13.528-3.509-4.14-8.661-10.215-11.448-13.5-2.786-3.285-9.969-12.047-15.961-19.472-5.991-7.425-13.841-16.875-17.444-21s-8.782-10.408-11.511-13.962c-5.365-6.989-10.375-11.962-12.098-12.009-.595-.016-1.569.984-2.166 2.221m157.612 98.104C601.354 168.088 597 172.995 597 173.89c0 .963 6.028 3.092 8.79 3.104.709.003 2.959.83 5 1.838 2.04 1.007 6.41 2.401 9.71 3.098s7.575 1.87 9.5 2.608c1.925.737 5.3 1.891 7.5 2.564s6.7 2.239 10 3.48c6.994 2.63 13.925 4.082 13.378 2.803-.208-.488-6.565-13.438-14.128-28.778-7.562-15.341-13.75-28.278-13.75-28.75 0-1.757-1.649-.487-7.135 5.497m-145.271-.636c-1.048 2.63-4.147 9.507-6.886 15.282-7.56 15.937-15.812 34.259-16.438 36.5-.307 1.1-1.008 2.573-1.557 3.274-1.797 2.294-.071 2.332 5.825.126 3.19-1.194 7.862-2.75 10.381-3.458s10.431-3.307 17.581-5.776 16.262-5.491 20.25-6.716c6.624-2.036 8.503-3.226 6.5-4.117-.413-.183-2.535-2.583-4.716-5.333s-4.206-5.225-4.5-5.5c-.937-.877-12.409-14.32-16.545-19.387a1179 1179 0 0 0-5.989-7.282l-2-2.395z" fill="currentColor" fillRule="evenodd" />
+    <defs>
+      <linearGradient id="muxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#d8b4fe" />
+        <stop offset="50%" stopColor="#ffffff" />
+        <stop offset="100%" stopColor="#818cf8" />
+      </linearGradient>
+    </defs>
+    <path 
+      d="M468.253 43.25c-6.119 12.696-12.584 26.616-15.208 32.75-1.765 4.125-4.522 10.284-6.127 13.687S444 96.116 444 96.413s-2.25 5.285-5 11.087-5 10.704-5 10.893-2.649 5.915-5.886 12.725c-7.919 16.657-11.132 23.719-18.781 41.279-5.886 13.353-9.16 20.746-16.779 37.103a3707 3707 0 0 0-5.323 11.5 2194 2194 0 0 1-7.97 17c-12.693 26.781-20.416 44.348-20.581 46.81-.153 2.279.202 2.671 2.32 2.566 1.375-.068 3.85-.589 5.5-1.156s4.575-1.558 6.5-2.202 6.2-2.219 9.5-3.5 7.575-2.89 9.5-3.573c1.925-.684 4.4-1.6 5.5-2.035s6.05-2.019 11-3.519c9.765-2.96 46.602-15.033 55.5-18.189 8.523-3.023 20.75-7.109 29-9.691 8.075-2.526 16.105-5.214 36.5-12.214 34.495-11.839 35.567-12.047 44.524-8.614 5 1.916 9.908 3.44 30.476 9.462 3.85 1.127 8.125 2.425 9.5 2.883s7.225 2.258 13 3.997c5.775 1.74 11.625 3.538 13 3.997 5.006 1.668 25.654 7.908 31.5 9.519 3.3.909 8.198 2.509 10.883 3.556 2.686 1.047 5.374 1.903 5.972 1.903 1.233 0 11.721 3.11 22.145 6.565 3.85 1.277 11.5 3.475 17 4.885 5.5 1.411 10.9 2.944 12 3.408 3.726 1.571 8.978 3.279 14.838 4.825 8.849 2.336 9.169 1.238 3.053-10.467-2.793-5.344-6.311-12.191-7.818-15.216s-3.402-6.625-4.211-8-2.162-4.075-3.006-6-4.194-8.991-7.445-15.702S729 209.621 729 209.04c0-.582-2.535-5.441-5.634-10.799-3.098-5.357-6.412-11.541-7.364-13.741-2.29-5.297-8.228-17.798-19.633-41.336-5.153-10.634-9.369-19.59-9.369-19.902 0-.562-23.503-48.563-33.178-67.762-5.73-11.369-6.64-12.702-8.397-12.293-1.081.251-15.877 15.739-21.925 22.948-1.1 1.312-4.671 5.301-7.936 8.865a5487 5487 0 0 0-14.5 15.919c-4.71 5.191-9.497 10.366-10.637 11.5-3.647 3.626-25.776 27.968-30.095 33.104l-4.168 4.957-5.451-6c-2.998-3.3-8.322-9.388-11.832-13.528-3.509-4.14-8.661-10.215-11.448-13.5-2.786-3.285-9.969-12.047-15.961-19.472-5.991-7.425-13.841-16.875-17.444-21s-8.782-10.408-11.511-13.962c-5.365-6.989-10.375-11.962-12.098-12.009-.595-.016-1.569.984-2.166 2.221m157.612 98.104C601.354 168.088 597 172.995 597 173.89c0 .963 6.028 3.092 8.79 3.104.709.003 2.959.83 5 1.838 2.04 1.007 6.41 2.401 9.71 3.098s7.575 1.87 9.5 2.608c1.925.737 5.3 1.891 7.5 2.564s6.7 2.239 10 3.48c6.994 2.63 13.925 4.082 13.378 2.803-.208-.488-6.565-13.438-14.128-28.778-7.562-15.341-13.75-28.278-13.75-28.75 0-1.757-1.649-.487-7.135 5.497m-145.271-.636c-1.048 2.63-4.147 9.507-6.886 15.282-7.56 15.937-15.812 34.259-16.438 36.5-.307 1.1-1.008 2.573-1.557 3.274-1.797 2.294-.071 2.332 5.825.126 3.19-1.194 7.862-2.75 10.381-3.458s10.431-3.307 17.581-5.776 16.262-5.491 20.25-6.716c6.624-2.036 8.503-3.226 6.5-4.117-.413-.183-2.535-2.583-4.716-5.333s-4.206-5.225-4.5-5.5c-.937-.877-12.409-14.32-16.545-19.387a1179 1179 0 0 0-5.989-7.282l-2-2.395z" 
+      fill={useGradient ? "url(#muxGradient)" : "currentColor"} 
+      fillRule="evenodd" 
+    />
   </svg>
 );
 
@@ -65,7 +78,6 @@ const playSound = (type) => {
   const now = ctx.currentTime;
 
   if (type === 'activate') {
-    // Sci-fi power up
     osc.type = 'sine';
     osc.frequency.setValueAtTime(200, now);
     osc.frequency.exponentialRampToValueAtTime(600, now + 0.4);
@@ -74,7 +86,6 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 0.5);
   } else if (type === 'denial') {
-    // Error buzz
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(100, now);
     osc.frequency.linearRampToValueAtTime(50, now + 0.3);
@@ -83,7 +94,6 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 0.3);
   } else if (type === 'rumble') {
-    // Deep sci-fi rumble
     const osc2 = ctx.createOscillator();
     osc2.type = 'sawtooth';
     osc2.frequency.setValueAtTime(40, now);
@@ -93,20 +103,18 @@ const playSound = (type) => {
 
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(50, now);
-    osc.frequency.linearRampToValueAtTime(400, now + 6); // Pitch rising higher
+    osc.frequency.linearRampToValueAtTime(400, now + 6); 
     gain.gain.setValueAtTime(0, now);
     gain.gain.linearRampToValueAtTime(0.3, now + 4);
     osc.start(now);
     osc.stop(now + 8);
   } else if (type === 'boom') {
-    // Sonic boom
     osc.type = 'square';
     osc.frequency.setValueAtTime(60, now);
     osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
     gain.gain.setValueAtTime(1, now);
     gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
     
-    // Noise burst
     const bufferSize = ctx.sampleRate * 2; 
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
@@ -123,7 +131,6 @@ const playSound = (type) => {
     osc.start(now);
     osc.stop(now + 2);
   } else if (type === 'message') {
-    // Soft ping
     osc.type = 'sine';
     osc.frequency.setValueAtTime(800, now);
     gain.gain.setValueAtTime(0.05, now);
@@ -145,7 +152,7 @@ const FluidBackground = () => {
     
     const particles = [];
     const charPool = "01MUXDAY_NULL";
-    const particleCount = 100; // Increased density
+    const particleCount = 100; 
 
     const resize = () => {
       width = canvas.width = window.innerWidth;
@@ -165,7 +172,6 @@ const FluidBackground = () => {
       }
       
       update() {
-        // Simple Flow Field Math
         const scale = 0.002;
         const noise = Math.sin(this.x * scale) + Math.cos(this.y * scale);
         this.angle = noise * Math.PI * 2;
@@ -173,11 +179,10 @@ const FluidBackground = () => {
         this.speedX += Math.cos(this.angle) * 0.08;
         this.speedY += Math.sin(this.angle) * 0.08;
         
-        // Friction
         this.speedX *= 0.98;
         this.speedY *= 0.98;
         
-        this.x += this.speedX + 0.2; // slight drift right
+        this.x += this.speedX + 0.2; 
         this.y += this.speedY;
         
         if (this.x > width) this.x = 0;
@@ -191,7 +196,7 @@ const FluidBackground = () => {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
         ctx.font = `bold ${this.size}px monospace`;
-        ctx.fillStyle = "rgba(0,0,0,0.08)"; // Slightly darker
+        ctx.fillStyle = "rgba(0,0,0,0.08)";
         ctx.fillText(this.text, 0, 0);
         ctx.restore();
       }
@@ -256,6 +261,44 @@ const ShimmerBubble = () => (
     </div>
 );
 
+// --- Context Menu ---
+const ContextMenu = ({ x, y, visible, onClose, text }) => {
+    const [copied, setCopied] = useState(false);
+    
+    useEffect(() => {
+        const handleClick = () => onClose();
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, [onClose]);
+
+    const handleCopy = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => onClose(), 800);
+    };
+
+    if (!visible) return null;
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            style={{ top: y, left: x }}
+            className="fixed z-[999] bg-white/90 backdrop-blur-xl border border-white/50 shadow-2xl rounded-xl p-1.5 min-w-[150px] overflow-hidden"
+        >
+            <button 
+                onClick={handleCopy}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-purple-50 hover:text-purple-700 rounded-lg transition-colors"
+            >
+                {copied ? <Check size={16} weight="bold" /> : <Copy size={16} />}
+                {copied ? "Copied!" : "Copy Text"}
+            </button>
+        </motion.div>
+    );
+};
+
 export default function App() {
   // --- State ---
   const [stage, setStage] = useState('idle'); // idle, petition_active, processing, lockdown
@@ -278,7 +321,11 @@ export default function App() {
   const [suckingWords, setSuckingWords] = useState([]);
   const [blackHoleDuration, setBlackHoleDuration] = useState(0);
   const [isPsychedelic, setIsPsychedelic] = useState(false);
-  const [pulseColor, setPulseColor] = useState(null); // 'blue' or 'red'
+  const [pulseColor, setPulseColor] = useState(null); 
+  const [dimActive, setDimActive] = useState(false);
+
+  // Context Menu State
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, text: '' });
 
   // Header Info
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -289,6 +336,7 @@ export default function App() {
   const inputContainerRef = useRef(null);
   const chatBottomRef = useRef(null);
   const pulseRef = useRef(null);
+  const darkOverlayRef = useRef(null);
 
   // --- Effects ---
 
@@ -309,7 +357,7 @@ export default function App() {
         if (stored.count >= MAX_DAILY_MESSAGES) {
           setStage('lockdown');
           setLockdownEndTime(stored.timestamp + lockoutTime);
-          setShowWelcome(false); // Don't show welcome if locked
+          setShowWelcome(false); 
         }
       } else {
         localStorage.setItem('muxday_data', JSON.stringify({ count: 0, timestamp: now }));
@@ -395,7 +443,7 @@ export default function App() {
       setInputValue('');
       
       const success = (isSecretMode && secretAnswer.length > 0);
-      const color = success ? '#3b82f6' : '#ef4444'; // Blue vs Red
+      const color = success ? '#3b82f6' : '#ef4444'; 
       setPulseColor(success ? 'blue' : 'red');
       playSound('activate');
 
@@ -443,13 +491,15 @@ export default function App() {
     const sourceWords = sourceText.split(' ').map(w => w.toUpperCase()).filter(w => w.length > 3);
     const pool = [...baseWords, ...sourceWords];
     
-    return Array.from({ length: 40 }).map((_, i) => ({
+    // Spawn words randomly across the screen, avoiding the very center initially
+    return Array.from({ length: 45 }).map((_, i) => ({
       id: i,
       text: pool[Math.floor(Math.random() * pool.length)],
-      x: (Math.random() - 0.5) * window.innerWidth * 1.5,
-      y: (Math.random() - 0.5) * window.innerHeight * 1.5,
+      // Start positions relative to viewport
+      x: (Math.random() * window.innerWidth),
+      y: (Math.random() * window.innerHeight),
       rotation: Math.random() * 360,
-      scale: Math.random() * 0.5 + 0.5
+      scale: Math.random() * 0.8 + 0.4
     }));
   };
 
@@ -475,37 +525,41 @@ export default function App() {
     
     tl.set(iconRef.current, { position: 'fixed', left: iconRect.left, top: iconRect.top, zIndex: 999, margin: 0 });
 
+    // Move icon to center and expand
     tl.to(iconRef.current, {
-      left: screenCenterX - 48, // Adjust for larger icon (w-24)
-      top: screenCenterY - 48,
-      width: 96,
-      height: 96,
-      scale: 2,
+      left: screenCenterX - 100, // Centered (width 200 / 2)
+      top: screenCenterY - 100,
+      width: 200,
+      height: 200,
+      scale: 1, // Reset scale to 1 relative to new width
       borderRadius: "50%",
       backgroundColor: "#000",
       borderColor: "#fff",
-      color: "#fff",
+      color: "#fff", // IMPORTANT: Set text color to white for logo visibility
       duration: 1.5,
       ease: "power2.inOut",
       onComplete: () => setIsPsychedelic(true)
     });
 
-    // 3. Black Hole Effects Start
-    tl.add(() => document.body.classList.add('cinematic-active'), "-=0.5");
+    // 3. Gradual Dimming (Fixed brightness jump)
+    tl.to(darkOverlayRef.current, { opacity: 1, duration: 2, ease: "power1.inOut" }, "-=1.0");
 
-    // 4. Suck words (Spiral)
+    // 4. Suck words (Fixed Suction)
     tl.add(() => {
        const wordElements = document.querySelectorAll('.sucking-word');
        if (wordElements.length) {
+         // Animate to absolute center of screen
          gsap.to(wordElements, {
-           left: screenCenterX,
-           top: screenCenterY,
+           left: "50%",
+           top: "50%",
+           x: "-50%", // Center align
+           y: "-50%", 
            scale: 0,
-           color: '#ffffff', // Turn white to be visible
+           color: '#ffffff',
            opacity: 1,
-           rotation: "+=720",
-           duration: cinematicDuration,
-           stagger: { amount: 1, from: "random" },
+           rotation: "+=1080", // Spin fast
+           duration: cinematicDuration * 0.8,
+           stagger: { amount: 1.5, from: "edges" }, // Suck from outside in
            ease: "expo.in"
          });
        }
@@ -517,13 +571,15 @@ export default function App() {
     // 6. The Boom
     tl.add(() => {
       playSound('boom');
-      document.body.classList.remove('cinematic-active');
       setIsPsychedelic(false);
       
       const flash = document.createElement('div');
       flash.className = 'fixed inset-0 bg-white z-[150] pointer-events-none mix-blend-screen';
       document.body.appendChild(flash);
       gsap.to(flash, { opacity: 0, duration: 1.5, onComplete: () => flash.remove() });
+      
+      // Reset Dimming
+      gsap.to(darkOverlayRef.current, { opacity: 0, duration: 1 });
     });
 
     // 7. Icon Moves to Chat
@@ -557,19 +613,24 @@ export default function App() {
     updateCount();
   };
 
+  const handleContextMenu = (e, text) => {
+      e.preventDefault();
+      setContextMenu({
+          visible: true,
+          x: e.clientX,
+          y: e.clientY,
+          text: text
+      });
+  };
+
   // --- Render ---
 
   return (
-    <div className="relative w-full h-screen font-sans overflow-hidden bg-zinc-50 text-zinc-900 selection:bg-purple-500/30 selection:text-black transition-colors duration-1000" style={{ cursor: CUSTOM_CURSOR }}>
+    <div className="relative w-full h-full min-h-screen font-sans overflow-hidden bg-zinc-50 text-zinc-900 selection:bg-purple-500/30 selection:text-black transition-colors duration-1000" style={{ cursor: CUSTOM_CURSOR }}>
       
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap');
         body { font-family: 'Geist', sans-serif; }
-        
-        /* The Darkening Layer */
-        .cinematic-active::after {
-          content: ''; position: fixed; inset: 0; background: #000; z-index: 70; opacity: 1; transition: opacity 2s ease; pointer-events: none;
-        }
         
         @keyframes hole-expand { 0% { transform: scale(0); } 100% { transform: scale(1); } }
         @keyframes disk-spin { 0% { transform: rotate(0deg) scale(0.8); opacity:0; } 50% { opacity: 0.8; } 100% { transform: rotate(1080deg) scale(0.1); opacity: 0; } }
@@ -594,21 +655,26 @@ export default function App() {
 
       <FluidBackground />
       
+      {/* Controlled Dark Overlay for Cinematic Effect */}
+      <div ref={darkOverlayRef} className="fixed inset-0 bg-black pointer-events-none opacity-0 z-[70]"></div>
+
       {/* Black Hole Overlay */}
       <BlackHole active={stage === 'processing' && suckingWords.length > 0} duration={blackHoleDuration} />
 
-      <div className="flex flex-col h-full relative z-10 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col h-screen relative z-10 max-w-4xl mx-auto w-full">
         
         {/* --- Header --- */}
-        <header className="flex justify-between items-center p-6 border-b border-zinc-200/50 backdrop-blur-sm">
+        <header className="flex justify-between items-center p-6 border-b border-zinc-200/50 backdrop-blur-sm z-50">
            <div className="flex items-center gap-2 group cursor-pointer">
              <div className="relative">
+                {/* Keep topbar logo small */}
                 <MuxLogo className="h-6 text-black group-hover:animate-spin" />
                 <div className="absolute inset-0 bg-purple-500 blur-lg opacity-0 group-hover:opacity-20 transition-opacity"></div>
              </div>
-             <span className="text-xs font-mono text-zinc-400 border border-zinc-200 px-2 py-0.5 rounded-full bg-white/50">v2.0.4-beta</span>
+             <span className={cn("text-xs font-mono border border-zinc-200 px-2 py-0.5 rounded-full bg-white/50", showWelcome ? "text-zinc-200 border-white/20 bg-white/10" : "text-zinc-400")}>v2.0.4-beta</span>
            </div>
-           <div className="flex gap-2 text-xs font-mono text-zinc-400 items-center">
+           {/* UPDATED: Dynamic text color for initial popup visibility */}
+           <div className={cn("flex gap-2 text-xs font-mono items-center transition-colors duration-500", showWelcome ? "text-white/70" : "text-zinc-400")}>
              <Fingerprint size={12} />
              <span>{fingerprint}</span>
              <span>@</span>
@@ -618,38 +684,43 @@ export default function App() {
 
         {/* --- Chat Area (Bento Grid Style) --- */}
         <main className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide">
-           <div className="space-y-6 pb-32">
+           <div className="space-y-8 pb-32">
               <AnimatePresence mode='popLayout'>
                 {chatHistory.map((msg, i) => (
                   <motion.div 
                     key={i}
-                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 30, scale: 0.9 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    className={cn("flex gap-4 w-full", msg.role === 'user' ? "justify-end" : "justify-start")}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    className={cn("flex gap-4 w-full group", msg.role === 'user' ? "justify-end" : "justify-start")}
                   >
-                    {/* AI Avatar */}
+                    {/* UPDATED: AI Avatar Bigger */}
                     {msg.role === 'ai' && (
-                      <div className="w-10 h-10 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1 shrink-0">
-                        <MuxLogo className="w-6 h-6 text-black" />
+                      <div className="w-12 h-12 rounded-2xl border border-zinc-200 flex items-center justify-center bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] mt-1 shrink-0 overflow-hidden">
+                        <MuxLogo className="w-8 h-8 text-black" />
                       </div>
                     )}
-                    <div className={cn(
-                      "max-w-[85%] md:max-w-[75%] p-6 rounded-3xl text-sm md:text-base leading-relaxed shadow-sm backdrop-blur-md transition-all hover:translate-y-[-2px] hover:shadow-md duration-300",
+                    <motion.div 
+                      onContextMenu={(e) => handleContextMenu(e, msg.text)}
+                      whileHover={{ scale: 1.01, translateY: -2 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={cn(
+                      "max-w-[85%] md:max-w-[75%] p-6 rounded-[2rem] text-sm md:text-base leading-relaxed shadow-sm backdrop-blur-md cursor-pointer transition-all border",
                       msg.role === 'ai' 
-                       ? "bg-white border border-zinc-100 text-zinc-800 rounded-tl-none" 
-                       : "bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-tr-none"
+                       ? "bg-white/80 border-white text-zinc-800 rounded-tl-none hover:shadow-xl hover:shadow-purple-500/10" 
+                       : "bg-zinc-900 border-zinc-800 text-zinc-100 rounded-tr-none shadow-[0_4px_20px_-5px_rgba(0,0,0,0.3)]"
                     )}>
-                       {msg.role === 'ai' && <div className="text-[9px] font-bold tracking-widest text-purple-600 mb-2 opacity-60">MUXDAY</div>}
+                       {msg.role === 'ai' && <div className="text-[10px] font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2 opacity-80">MUXDAY INTELLIGENCE</div>}
                        <p className="whitespace-pre-wrap font-medium">{msg.text}</p>
-                    </div>
+                    </motion.div>
                   </motion.div>
                 ))}
                 
                 {/* Fake Loading Shimmer during non-cinematic processing */}
                 {stage === 'processing' && suckingWords.length === 0 && (
                    <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="flex gap-4 w-full justify-start">
-                      <div className="w-10 h-10 rounded-full border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1 shrink-0">
-                         <MuxLogo className="w-6 h-6 text-black animate-spin" />
+                      <div className="w-12 h-12 rounded-2xl border border-zinc-200 flex items-center justify-center bg-white shadow-sm mt-1 shrink-0">
+                         <MuxLogo className="w-8 h-8 text-black animate-spin" />
                       </div>
                       <ShimmerBubble />
                    </motion.div>
@@ -666,62 +737,75 @@ export default function App() {
               {/* Particle Words (Sucking effect) */}
               {suckingWords.map((word) => (
                  <div key={word.id} className="sucking-word fixed text-zinc-400/50 font-mono text-[10px] font-bold pointer-events-none z-[120]"
-                   style={{ left: word.x + window.innerWidth/2, top: word.y + window.innerHeight/2, transform: `rotate(${word.rotation}deg)` }}
+                   style={{ left: word.x, top: word.y, transform: `rotate(${word.rotation}deg)` }}
                  >
                    {word.text}
                  </div>
               ))}
 
               {/* Bento Input Box */}
-              <div className={cn("relative p-1 rounded-full transition-all duration-300 group bg-white shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-zinc-100", 
+              <div className={cn("relative p-2 rounded-full transition-all duration-300 group bg-white shadow-[0_15px_50px_-10px_rgba(0,0,0,0.08)] border border-zinc-100/50 backdrop-blur-xl", 
                   stage === 'lockdown' ? "opacity-50 grayscale pointer-events-none" : "hover:shadow-[0_20px_60px_-15px_rgba(168,85,247,0.15)] hover:border-purple-200"
               )}>
-                 <div className="relative flex items-center pl-6 pr-2 rounded-full h-[72px] w-full">
+                 <div className="relative flex items-center pl-8 pr-2 rounded-full h-[80px] w-full">
                     <input
                       type="text"
                       value={inputValue}
                       onChange={(e) => setInputValue(e.target.value)}
                       onKeyDown={handleKeyDown}
                       placeholder={petitionComplete ? "Ask MuxDay..." : "Initialize pre-prompt..."}
-                      className="flex-1 bg-transparent border-none outline-none text-zinc-900 placeholder-zinc-300 font-medium h-full w-full tracking-wide text-lg"
+                      className="flex-1 bg-transparent border-none outline-none text-zinc-900 placeholder-zinc-300 font-medium h-full w-full tracking-wide text-xl"
                       autoComplete="off"
                       autoFocus
                       disabled={stage === 'processing' || stage === 'lockdown'}
                     />
                     
                     {/* The Mux Send Icon & Pulse Container */}
-                    <div className="relative w-14 h-14 flex items-center justify-center">
+                    <div className="relative w-16 h-16 flex items-center justify-center">
                         {/* Radial Pulse */}
                         <div ref={pulseRef} className="absolute inset-0 rounded-full border-2 opacity-0 pointer-events-none" style={{ borderColor: '#3b82f6' }}></div>
                         
-                        {/* The Icon */}
+                        {/* The Icon - UPDATED SIZE */}
                         <div 
                             ref={iconRef}
                             onClick={handleStep}
                             className={cn(
-                            "w-12 h-12 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 active:scale-95 shadow-sm absolute",
+                            "w-14 h-14 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 z-50 active:scale-95 shadow-lg absolute right-0",
                             petitionComplete 
                                 ? "bg-zinc-900 text-white hover:bg-black" 
-                                : "bg-zinc-100 text-zinc-400 hover:bg-zinc-200"
+                                : "bg-zinc-50 text-zinc-400 hover:bg-zinc-100 border border-zinc-200"
                             )}
                         >
-                            <MuxLogo className="w-8 h-8" psychedelic={isPsychedelic} />
+                            {/* Pass useGradient to ensure visibility in black hole if needed via props, but css class handles color */}
+                            <MuxLogo className="w-10 h-10" psychedelic={isPsychedelic} useGradient={isPsychedelic} />
                         </div>
                     </div>
                  </div>
               </div>
               
               {/* Status Bar */}
-              <div className="flex justify-between items-center mt-4 px-4">
+              <div className="flex justify-between items-center mt-4 px-6">
                  <div className="text-[10px] text-zinc-400 font-mono tracking-wider flex items-center gap-2 uppercase">
                    <div className={cn("w-2 h-2 rounded-full transition-colors duration-300 shadow-sm", petitionComplete ? "bg-purple-500 animate-pulse" : "bg-zinc-300")}></div>
                    {petitionComplete ? "Request connected" : "Awaiting Pre-prompt"}
                  </div>
-                 {/* DEV MODE HIDDEN */}
               </div>
            </div>
         </div>
       </div>
+
+      {/* --- Context Menu Portal --- */}
+      <AnimatePresence>
+          {contextMenu.visible && (
+              <ContextMenu 
+                  x={contextMenu.x} 
+                  y={contextMenu.y} 
+                  visible={contextMenu.visible} 
+                  text={contextMenu.text}
+                  onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+              />
+          )}
+      </AnimatePresence>
 
       {/* --- Welcome Pop-up --- */}
       <AnimatePresence>
@@ -730,28 +814,29 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[300] bg-zinc-900/60 backdrop-blur-md flex items-center justify-center p-6"
+            className="fixed inset-0 z-[300] bg-zinc-900/80 backdrop-blur-md flex items-center justify-center p-6"
           >
              <motion.div 
                initial={{ scale: 0.9, y: 20 }}
                animate={{ scale: 1, y: 0 }}
-               className="bg-white rounded-[40px] max-w-md w-full p-8 shadow-2xl relative overflow-hidden"
+               className="bg-white rounded-[48px] max-w-md w-full p-10 shadow-2xl relative overflow-hidden ring-1 ring-white/20"
              >
                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-blue-500"></div>
-                <div className="flex justify-center mb-6">
-                    <div className="w-16 h-16 rounded-full bg-zinc-50 border border-zinc-100 flex items-center justify-center shadow-inner">
-                        <MuxLogo className="w-8 h-8 text-black" />
+                <div className="flex justify-center mb-8">
+                    {/* UPDATED: Larger Logo in Popup */}
+                    <div className="w-24 h-24 rounded-[32px] bg-zinc-50 border border-zinc-100 flex items-center justify-center shadow-inner">
+                        <MuxLogo className="w-16 h-16 text-black" />
                     </div>
                 </div>
                 
-                <h2 className="text-3xl font-bold text-center text-zinc-900 mb-1">Welcome to MuxDay</h2>
+                <h2 className="text-3xl font-bold text-center text-zinc-900 mb-1 tracking-tight">Welcome to MuxDay</h2>
                 <p className="text-center text-zinc-400 text-sm font-medium mb-8">The AI that knows it all</p>
                 
-                <div className="bg-zinc-50 p-6 rounded-3xl border border-zinc-100 mb-6 space-y-4">
-                   <div className="flex gap-3 items-start">
-                      <Warning size={20} className="text-purple-500 shrink-0 mt-0.5" weight="fill" />
-                      <p className="text-sm text-zinc-600 leading-relaxed">
-                        Before you type your own request, you must catch the attention of MuxDay by writing a <span className="font-bold text-zinc-900">pre-prompt</span> otherwise your main prompt will be rejected or skipped.
+                <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100 mb-8 space-y-4">
+                   <div className="flex gap-4 items-start">
+                      <Warning size={24} className="text-purple-600 shrink-0 mt-0.5" weight="duotone" />
+                      <p className="text-sm text-zinc-700 leading-relaxed font-medium">
+                        Before you type your own request, you must catch the attention of MuxDay by writing a <span className="font-bold text-black border-b-2 border-purple-200">pre-prompt</span> otherwise your main prompt will be rejected.
                       </p>
                    </div>
                 </div>
@@ -762,9 +847,9 @@ export default function App() {
                 
                 <button 
                   onClick={() => setShowWelcome(false)}
-                  className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95 shadow-lg shadow-zinc-200"
+                  className="w-full py-5 bg-zinc-900 text-white rounded-2xl font-bold text-lg hover:bg-black transition-all active:scale-95 shadow-xl shadow-zinc-200"
                 >
-                  Confirm
+                  Confirm & Initialize
                 </button>
              </motion.div>
           </motion.div>
